@@ -141,33 +141,6 @@ class Stage extends DisplayObjectContainer
       var old_n = nmeFocusOverObjects.length;
       var old_obj:InteractiveObject = old_n > 0 ? nmeFocusOverObjects[old_n - 1] : null;
       
-      //if (new_obj != old_obj) 
-      //{
-         // focusOver/focusOut goes only over the non-common objects in the tree...
-         //var common = 0;
-         //while(common < new_n && common < old_n && inStack[common] == nmeFocusOverObjects[common])
-            //common++;
-         //
-         //var focusOut = new FocusEvent(FocusEvent.FOCUS_OUT, false, false, new_obj, inEvent.flags > 0, inEvent.code);
-         //
-         //var i = old_n - 1;
-         //while(i >= common) 
-         //{
-            //nmeFocusOverObjects[i].nmeDispatchEvent(focusOut);
-            //i--;
-         //}
-         //
-         //var focusIn = new FocusEvent(FocusEvent.FOCUS_IN, false, false, old_obj, inEvent.flags > 0, inEvent.code);
-         //var i = new_n - 1;
-         //
-         //while(i >= common) 
-         //{
-            //inStack[i].nmeDispatchEvent(focusIn);
-            //i--;
-         //}
-         //
-         //nmeFocusOverObjects = inStack;
-      //}
       
       if (new_obj != old_obj)
       {
@@ -177,15 +150,13 @@ class Stage extends DisplayObjectContainer
             focusOut.target = old_obj;
             old_obj.nmeFireEvent(focusOut);
          }
-         
          if (new_obj!=null)
          {
             var focusIn = new FocusEvent(FocusEvent.FOCUS_IN, true, false, old_obj, inEvent.flags > 0, inEvent.code);
-         
+
             focusIn.target = new_obj;
             new_obj.nmeFireEvent(focusIn);
          }
-         
          nmeFocusOverObjects = inStack;
       }
    }
