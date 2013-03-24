@@ -29,7 +29,7 @@
  */
 package format.swf;
 
-typedef Fixed = haxe.Int32;
+typedef Fixed = Int;
 typedef Fixed8 = Int;
 
 typedef SWF = {
@@ -443,7 +443,7 @@ typedef Sound = {
 	var rate : SoundRate;
 	var is16bit : Bool;
 	var isStereo : Bool;
-	var samples : haxe.Int32;
+	var samples : Int;
 	var data : SoundData;
 };
 

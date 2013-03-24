@@ -15,7 +15,7 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #define ALLOW_OGL2
-#define NME_FORCE_GLES2
+//#define NME_FORCE_GLES2
 
 #endif
 

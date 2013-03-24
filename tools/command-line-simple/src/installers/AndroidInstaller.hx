@@ -118,25 +118,8 @@ class AndroidInstaller extends InstallerBase
    {
       var adb:Dynamic = getADB();
 
-      if (debug) 
-      {
-         var filter = "*:E";
-         var includeTags = [ "NME", "Main", "GameActivity", "GLThread", "trace" ];
-
-         for(tag in includeTags) 
-         {
-            filter += " " + tag + ":D";
-         }
-
-         Lib.println(filter);
-
-         runCommand(adb.path, adb.name, [ "logcat", filter ]);
-
-      }
-      else
-      {
-         runCommand(adb.path, adb.name, [ "logcat", "*:S trace:I" ]);
-      }
+      runCommand(adb.path, adb.name, [ "logcat", "-c" ]);
+      runCommand(adb.path, adb.name, [ "logcat" ]);
    }
 
    override function uninstall():Void 

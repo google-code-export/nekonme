@@ -5,7 +5,7 @@ import Sys;
 
 class NDLL 
 {
-   public static var nekoMode = true;
+   public static var nekoMode = false;
 
    public var extension:String;
    public var hash:String;

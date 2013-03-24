@@ -1,5 +1,12 @@
 package helpers;
 
+#if haxe3
+
+class ZipHelper {
+	public static function compress (path:String):Void { } 
+}
+
+#else
 
 import haxe.io.Bytes;
 import haxe.io.Path;
@@ -66,3 +73,5 @@ class ZipHelper {
 		
 
 }
+
+#end

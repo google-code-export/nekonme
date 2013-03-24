@@ -4,7 +4,7 @@ package helpers;
 class WebOSHelper {
 	
 	
-	private static var defines:Hash <String>;
+	private static var defines:haxe.ds.StringMap <String>;
 	private static var sdkDirectory:String;
 	
 	
@@ -15,7 +15,7 @@ class WebOSHelper {
 	}
 	
 	
-	public static function initialize (defines:Hash <String>):Void {
+	public static function initialize (defines:haxe.ds.StringMap <String>):Void {
 		
 		WebOSHelper.defines = defines;
 		sdkDirectory = "";

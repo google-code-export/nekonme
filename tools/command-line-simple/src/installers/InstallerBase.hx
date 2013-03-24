@@ -579,6 +579,10 @@ class InstallerBase
       setDefault("WIN_BORDERLESS", "false");
       setDefault("WIN_FULLSCREEN", "false");
       setDefault("WIN_VSYNC", "false");
+      setDefault("WIN_DEPTH_BUFFER", "false");
+      setDefault("WIN_STENCIL_BUFFER", "false");
+      setDefault("WIN_ALLOW_SHADERS", "true");
+      setDefault("WIN_REQUIRE_SHADERS", "true");
       setDefault("WIN_ANTIALIASING", "1");
       setDefault("APP_FILE", "MyApplication");
       setDefault("APP_DESCRIPTION", "");

@@ -7,7 +7,6 @@ import data.Icon;
 import data.Icons;
 import data.NDLL;
 import format.SWF;
-import haxe.Stack;
 import haxe.Template;
 import haxe.io.Path;
 import haxe.xml.Fast;
@@ -18,6 +17,10 @@ import sys.io.File;
 import sys.io.FileOutput;
 import sys.FileSystem;
 
+
+#if haxe3
+typedef Hash<T> = haxe.ds.StringMap<T>
+#end
 
 class InstallerBase {
 	

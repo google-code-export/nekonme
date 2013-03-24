@@ -965,27 +965,26 @@ HardwareContext *HardwareContext::CreateOpenGL(void *inWindow, void *inGLCtx, bo
 
    #ifdef ANDROID
    const char *version = (const char *)glGetString(GL_VERSION);
-   if (version)
-      shaders = version[10] == '2';
+   shaders = version[10] == '2' && strncmp(version,"OpenGL ES-CM 1",13);
    ELOG("VERSION %s (%c), pipeline = %s", version, version==0 ? '?' : version[10], shaders ? "programmable" : "fixed");
    #endif
    
    #ifdef NME_FORCE_GLES2
-   //printf ("Force GLES2\n");
+   ELOG("Force GLES2\n");
    shaders = true;
    #elif NME_FORCE_GLES1
-   //printf ("Force GLES1\n");
+   ELOG("Force GLES1\n");
    shaders = false;
    #endif
    
    if (shaders)
    {
-	  //printf("Using OGL2\n");
+	   //ELOG("Using OGL2\n");
       ctx = new OGL2Context( (WinDC)inWindow, (GLCtx)inGLCtx );
    }
    else
    {
-	  //printf("Using OGL1\n");
+	   //ELOG("Using OGL1\n");
       ctx = new OGLContext( (WinDC)inWindow, (GLCtx)inGLCtx );
    }
 

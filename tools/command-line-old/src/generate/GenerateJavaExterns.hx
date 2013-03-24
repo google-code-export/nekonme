@@ -5,7 +5,7 @@ import haxe.io.Bytes;
 import haxe.io.Input;
 import haxe.io.Output;
 import haxe.io.Path;
-import haxe.BaseCode;
+import haxe.crypto.BaseCode;
 import helpers.PathHelper;
 import helpers.ProcessHelper;
 import installers.InstallerBase;

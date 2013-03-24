@@ -281,6 +281,7 @@ class BitmapData implements IBitmapDrawable
    // need to build a better way to do this
    private inline function nmeFloodFill(x:Int, y:Int, color:Int, replaceColor:Int):Void
    {
+/*
 	   if (getPixel32(x, y) == replaceColor) {
 		   
 		   setPixel32(x, y, color);
@@ -303,6 +304,7 @@ class BitmapData implements IBitmapDrawable
 			   
 		   } catch (e:Dynamic) {}
 	   }
+*/
    }
    
    private inline function nmeLoadFromBytes(inBytes:ByteArray, ?inRawAlpha:ByteArray):Void 
