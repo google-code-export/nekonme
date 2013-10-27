@@ -4,7 +4,8 @@ import haxe.io.Bytes;
 import haxe.io.Eof;
 import haxe.io.Input;
 
-class MpegAudioReader {
+class MpegAudioReader 
+{
     // The theoretical absolute maximum frame size is 2881 bytes
     // (MPEG 2.5 Layer II 160Kb/s, with a padding slot).
     //
@@ -68,8 +69,10 @@ class MpegAudioReader {
     var bufferCursor:Int;
     var bufferLength:Int;
 
-    public function new(input:Input) {
-        if (input == null) {
+    public function new(input:Input) 
+    {
+        if (input == null) 
+        {
             throw "input must not be null";
         }
 
@@ -83,8 +86,10 @@ class MpegAudioReader {
         bufferLength = 0;
     }
 
-    public function readAll() {
-        if (state != MpegAudioReaderState.Start) {
+    public function readAll() 
+    {
+        if (state != MpegAudioReaderState.Start) 
+        {
             throw "Cannot combine calls to readNext and readAll";
         }
 
@@ -93,23 +98,23 @@ class MpegAudioReader {
         var encoderDelay:Int = 0;
         var endPadding:Int = 0;
 
-        while (true) {
+        while(true) 
+        {
             var element = readNext();
 
-            switch (element) {
+            switch(element) 
+            {
                 case Frame(frame):
                 frames.push(frame);
 
                 case Info(_):
                 // Discard info tag.
-
                 case GaplessInfo(giEncoderDelay, giEndPadding):
                 encoderDelay = giEncoderDelay;
                 endPadding = giEndPadding;
 
                 case Unknown(_):
                 // Discard unknown bytes
-
                 case End:
                 break;
             }
@@ -120,8 +125,10 @@ class MpegAudioReader {
         return audio;
     }
 
-    public function readNext() {
-        switch (state) {
+    public function readNext() 
+    {
+        switch(state) 
+        {
             case Start, Seeking:
             return seek();
 
@@ -139,43 +146,57 @@ class MpegAudioReader {
         }
     }
 
-    function seek() {
+    function seek() 
+    {
         bufferCursor = 0;
 
-        try {
-            do {
-                do {
-                    if (!bufferSpace(2)) {
+        try 
+        {
+            do 
+            {
+                do 
+                {
+                    if (!bufferSpace(2)) 
+                    {
                         return yieldUnknown();
                     }
-                } while (readByte() != 0xff);
-            } while ((readByte() & 0x80) != 0x80);
-        } catch (eof:Eof) {
+                } while(readByte() != 0xff);
+            } while((readByte() & 0x80) != 0x80);
+        } catch(eof:Eof) 
+        {
             return end();
         }
 
-        if (bufferCursor > 2) {
+        if (bufferCursor > 2) 
+        {
             state = MpegAudioReaderState.Frame;
             return yieldUnknown(bufferCursor - 2);
-        } else {
+        }
+        else
+        {
             return frame();
         }
     }
 
-    function frame() {
+    function frame() 
+    {
         var b:Int;
-        try {
+        try 
+        {
             b = readByte(1);
-        } catch (eof:Eof) {
+        } catch(eof:Eof) 
+        {
             return end();
         }
         var versionIndex = (b >> 3) & 0x3;
         var layerIndex = (b >> 1) & 0x3;
         var hasCrc = b & 1 == 0;
 
-        try {
+        try 
+        {
             b = readByte(2);
-        } catch (eof:Eof) {
+        } catch(eof:Eof) 
+        {
             return end();
         }
         var bitrateIndex = (b >> 4) & 0xf;
@@ -183,9 +204,11 @@ class MpegAudioReader {
         var hasPadding = (b >> 1) & 1 == 1;
         var privateBit = b & 1 == 1;
 
-        try {
+        try 
+        {
             b = readByte(3);
-        } catch (eof:Eof) {
+        } catch(eof:Eof) 
+        {
             return end();
         }
         var modeIndex = (b >> 6) & 0x3;
@@ -196,7 +219,8 @@ class MpegAudioReader {
 
         var version = versions[versionIndex];
         var layer = layers[layerIndex];
-        var bitrate = switch (version) {
+        var bitrate = switch(version) 
+        {
             case Version1: version1Bitrates[layerIndex][bitrateIndex];
             case Version2, Version25: version2Bitrates[layerIndex][bitrateIndex];
         }
@@ -205,7 +229,8 @@ class MpegAudioReader {
         var emphasis = emphases[emphasisIndex];
 
         if (version == null || layer == null || bitrate == null
-                || samplingFrequency == null || emphasis == null) {
+                || samplingFrequency == null || emphasis == null) 
+                {
             // This isn't a valid frame.
             // Seek for another frame starting from the byte after the bogus syncword.
             state = MpegAudioReaderState.Seeking;
@@ -214,19 +239,24 @@ class MpegAudioReader {
 
         var frameData:Bytes;
 
-        if (bitrate == 0) {
+        if (bitrate == 0) 
+        {
             // free-format bitrate
-
             var end = false;
-            try {
-                do {
-                    do {
-                        if (!bufferSpace(2)) {
+            try 
+            {
+                do 
+                {
+                    do 
+                    {
+                        if (!bufferSpace(2)) 
+                        {
                             return yieldUnknown();
                         }
-                    } while (readByte() != 0xff);
-                } while ((readByte() & 0xf8) != 0xf8);
-            } catch (eof:Eof) {
+                    } while(readByte() != 0xff);
+                } while((readByte() & 0xf8) != 0xf8);
+            } catch(eof:Eof) 
+            {
                 end = true;
             }
 
@@ -237,21 +267,25 @@ class MpegAudioReader {
 
             bitrate = Math.floor(samplingFrequency * frameLengthSlots
                     / slotsPerBitPerSampleByLayerIndexByVersionIndex[versionIndex][layerIndex]); // TODO should bitrate be Float?
-
             frameData = yieldBytes(frameLengthBytes);
-        } else {
+        }
+        else
+        {
             var frameLengthSlots = Math.floor(slotsPerBitPerSampleByLayerIndexByVersionIndex[versionIndex][layerIndex]
                     * bitrate / samplingFrequency);
 
-             if (hasPadding) {
+             if (hasPadding) 
+             {
                 frameLengthSlots += 1;
             }
 
             var frameLengthBytes = frameLengthSlots * slotSizeByLayerIndex[layerIndex];
 
-            try {
+            try 
+            {
                 readBytesTo(frameLengthBytes - 1);
-            } catch (eof:Eof) {
+            } catch(eof:Eof) 
+            {
                 return end();
             }
 
@@ -261,12 +295,15 @@ class MpegAudioReader {
         var header = new FrameHeader(version, layer, hasCrc, bitrate, samplingFrequency, hasPadding,
                 privateBit, mode, modeExtension, copyright, original, emphasis);
 
-        if (!seenFirstFrame) {
+        if (!seenFirstFrame) 
+        {
             seenFirstFrame = true;
 
-            if (layer == Layer.Layer3) {
+            if (layer == Layer.Layer3) 
+            {
                 var info = readInfo(header, frameData);
-                if (info != null) {
+                if (info != null) 
+                {
                     state = MpegAudioReaderState.Info(info);
                     return Element.Info(info);
                 }
@@ -279,13 +316,17 @@ class MpegAudioReader {
         return Element.Frame(frame);
     }
 
-    function readInfo(header:FrameHeader, frameData:Bytes) {
-        var sideInformationSize = switch (header.version) {
-            case Version1: switch (header.mode) {
+    function readInfo(header:FrameHeader, frameData:Bytes) 
+    {
+        var sideInformationSize = switch(header.version) 
+        {
+            case Version1: switch(header.mode) 
+            {
                 case Stereo, JointStereo, DualChannel: 32;
                 case SingleChannel: 17;
             };
-            case Version2, Version25: switch (header.mode) {
+            case Version2, Version25: switch(header.mode) 
+            {
                 case Stereo, JointStereo, DualChannel: 17;
                 case SingleChannel: 9;
             }
@@ -295,8 +336,10 @@ class MpegAudioReader {
 
         var infoStartIndex = sideInformationStartIndex + sideInformationSize;
 
-        for (i in sideInformationStartIndex...infoStartIndex) {
-            if (frameData.get(i) != 0) {
+        for(i in sideInformationStartIndex...infoStartIndex) 
+        {
+            if (frameData.get(i) != 0) 
+            {
                 return null;
             }
         }
@@ -304,53 +347,67 @@ class MpegAudioReader {
         if (frameData.sub(infoStartIndex, infoTagSignature.length)
                         .compare(infoTagSignature) == 0
                 || frameData.sub(infoStartIndex, xingTagSignature.length)
-                        .compare(xingTagSignature) == 0) {
+                        .compare(xingTagSignature) == 0) 
+                        {
             return new Info(header, infoStartIndex, frameData);
-        } else {
+        }
+        else
+        {
             return null;
         }
     }
 
-    function infoTagGaplessInfo(info:Info) {
+    function infoTagGaplessInfo(info:Info) 
+    {
         var b0 = info.frameData.get(info.infoStartIndex + 0x8d);
         var b1 = info.frameData.get(info.infoStartIndex + 0x8e);
         var b2 = info.frameData.get(info.infoStartIndex + 0x8f);
 
-        var encoderDelay = ((b0 << 4) & 0xff0) | ((b1 >> 4) &0xf);
-        var endPadding = ((b1 << 8) & 0xf00) | (b2 & 0xff);
+        var encoderDelay = ((b0 << 4) & 0xff0) |((b1 >> 4) &0xf);
+        var endPadding = ((b1 << 8) & 0xf00) |(b2 & 0xff);
 
         state = MpegAudioReaderState.Seeking;
         return Element.GaplessInfo(encoderDelay, endPadding);
     }
 
-    function end() {
+    function end() 
+    {
         var unknownElement = yieldUnknown(bufferLength);
 
-        if (unknownElement == null) {
+        if (unknownElement == null) 
+        {
             state = MpegAudioReaderState.Ended;
             return Element.End;
-        } else {
+        }
+        else
+        {
             state = MpegAudioReaderState.End;
             return unknownElement;
         }
     }
 
-    function yieldUnknown(length = -1) {
-        if (length == -1) {
+    function yieldUnknown(length = -1) 
+    {
+        if (length == -1) 
+        {
             length = bufferCursor;
         }
 
-        if (length == 0) {
+        if (length == 0) 
+        {
             return null;
         }
 
         return Element.Unknown(yieldBytes(length));
     }
 
-    function yieldBytes(length = -1) {
-        if (length == -1) {
+    function yieldBytes(length = -1) 
+    {
+        if (length == -1) 
+        {
             length = bufferCursor;
-        } else if (length == 0) {
+        } else if (length == 0) 
+        {
             return Bytes.alloc(0);
         }
 
@@ -367,18 +424,23 @@ class MpegAudioReader {
         return bytes;
     }
 
-    inline function assert(condition:Bool) {
-        if (!condition) {
+    inline function assert(condition:Bool) 
+    {
+        if (!condition) 
+        {
             throw "MpegAudioReader internal error";
         }
     }
 
-    inline function bufferSpace(bytes = 1) {
+    inline function bufferSpace(bytes = 1) 
+    {
         return bufferCursor + bytes <= BUFFER_SIZE;
     }
 
-    inline function readByte(position:Int = -1) {
-        if (position == -1) {
+    inline function readByte(position:Int = -1) 
+    {
+        if (position == -1) 
+        {
             position = bufferCursor;
         }
 
@@ -387,14 +449,17 @@ class MpegAudioReader {
         return buffer.get(position);
     }
 
-    inline function readBytes(count:Int) {
+    inline function readBytes(count:Int) 
+    {
         readBytesTo(bufferCursor + count);
     }
 
-    inline function readBytesTo(position:Int) {
+    inline function readBytesTo(position:Int) 
+    {
         assert(position >= 0 && position < BUFFER_SIZE);
 
-        while (bufferLength <= position) {
+        while(bufferLength <= position) 
+        {
             buffer.set(bufferLength, input.readByte());
             bufferCursor = ++bufferLength;
         }
@@ -403,7 +468,8 @@ class MpegAudioReader {
     }
 }
 
-private enum MpegAudioReaderState {
+private enum MpegAudioReaderState 
+{
     Start;
     Seeking;
     Frame;

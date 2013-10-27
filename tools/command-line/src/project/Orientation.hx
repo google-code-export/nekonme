@@ -1,8 +1,7 @@
-enum Orientation { 
-	
-	PORTRAIT;
-	LANDSCAPE;
-	ALL;
-	AUTO;
-	
+enum Orientation 
+{
+   PORTRAIT;
+   LANDSCAPE;
+   ALL;
+   AUTO;
 }

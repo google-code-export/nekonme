@@ -1,6 +1,5 @@
-enum LibraryType {
-	
-	SWF;
-	XFL;
-	
+enum LibraryType 
+{
+   SWF;
+   XFL;
 }

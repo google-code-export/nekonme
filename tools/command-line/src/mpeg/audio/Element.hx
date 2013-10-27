@@ -2,7 +2,8 @@ package mpeg.audio;
 
 import haxe.io.Bytes;
 
-enum Element {
+enum Element 
+{
     Frame(frame:Frame);
     Info(info:Info);
     GaplessInfo(encoderDelay:Int, endPadding:Int);

@@ -1,7 +1,6 @@
-enum PlatformType {
-	
-	DESKTOP;
-	MOBILE;
-	WEB;
-
+enum PlatformType 
+{
+   DESKTOP;
+   MOBILE;
+   WEB;
 }

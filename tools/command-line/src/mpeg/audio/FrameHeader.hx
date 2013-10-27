@@ -2,7 +2,8 @@ package mpeg.audio;
 
 import haxe.io.Bytes;
 
-class FrameHeader {
+class FrameHeader 
+{
     public var version(default, null):MpegVersion;
     public var layer(default, null):Layer;
     public var hasCrc(default, null):Bool;
@@ -18,7 +19,8 @@ class FrameHeader {
 
     public function new(version:MpegVersion, layer:Layer, hasCrc:Bool, bitrate:Int, samplingFrequency:Int,
                         hasPadding:Bool, privateBit:Bool, mode:Mode, modeExtension:Int, copyright:Bool, original:Bool,
-                        emphasis:Emphasis) {
+                        emphasis:Emphasis) 
+                        {
         this.version = version;
         this.layer = layer;
         this.hasCrc = hasCrc;
