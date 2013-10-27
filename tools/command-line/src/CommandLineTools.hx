@@ -367,8 +367,6 @@ class CommandLineTools {
 		//Sys.println ("  [flash] -web : Generate web template files");
 		//Sys.println ("  [flash] -chrome : Generate Google Chrome app template files");
 		//Sys.println ("  [flash] -opera : Generate an Opera Widget");
-		Sys.println ("  [html5] -minify : Minify output using the Google Closure compiler");
-		Sys.println ("  [html5] -minify -yui : Minify output using the YUI compressor");
 		Sys.println ("  (display) -hxml : Print HXML information for the project");
 		Sys.println ("  (display) -nmml : Print NMML information for the project");
 		//Sys.println ("  (generate) -java-externs : Generate Haxe classes from compiled Java");
