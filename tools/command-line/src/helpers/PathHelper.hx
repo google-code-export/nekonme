@@ -94,7 +94,6 @@ class PathHelper
 
    public static function findTemplates(templatePaths:Array<String>, path:String, warnIfNotFound:Bool = true):Array<String> 
    {
-trace(templatePaths);
       var matches = [];
 
       for(templatePath in templatePaths) 
