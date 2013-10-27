@@ -1,8 +1,8 @@
 package;
 
 
-import format.SWF;
 #if swfdev
+import format.SWF;
 import format.swf.exporters.SWFLiteExporter;
 import format.swf.lite.symbols.BitmapSymbol;
 #end

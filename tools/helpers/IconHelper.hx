@@ -7,7 +7,6 @@ import haxe.io.BytesOutput;
 import haxe.io.Path;
 import nme.display.Bitmap;
 import nme.display.BitmapData;
-import nme.display.BitmapInt32;
 import nme.display.Shape;
 import nme.geom.Rectangle;
 import nme.utils.ByteArray;

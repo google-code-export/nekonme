@@ -823,7 +823,7 @@ namespace nme
             fclose(oggFile);
 
             //throw std::string("Could not open Ogg stream. ") + errorString(result);
-            LOG_SOUND((std::string("Could not open Ogg stream. ") + errorString(result)).c_str());
+            LOG_SOUND("Could not open Ogg stream %s",errorString(result).c_str());
             mIsValid = false;
             return;
         }

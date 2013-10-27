@@ -1,7 +1,6 @@
 import format.SVG;
 import nme.display.Bitmap;
 import nme.display.BitmapData;
-import nme.display.BitmapInt32;
 import nme.display.Shape;
 
 

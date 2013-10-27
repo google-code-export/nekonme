@@ -49,6 +49,7 @@ class IOSHelper {
         }
 			
         ProcessHelper.runCommand (workingDirectory, "xcodebuild", commands);
+        //ProcessHelper.runCommand (workingDirectory + "/" + project , "xcodebuild", commands);
 		
 	}
 	

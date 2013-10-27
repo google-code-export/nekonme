@@ -11,7 +11,7 @@ extern "C" const char *hxRunLibrary();
 extern "C" void hxcpp_set_top_of_stack();
 	
 ::foreach ndlls::
- ::if (registerStatics)::
+ ::if (registerStatics!="false")::
      extern "C" int ::name::_register_prims();
  ::end::
 ::end::

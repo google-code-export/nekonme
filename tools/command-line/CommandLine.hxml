@@ -1,13 +1,10 @@
 -main CommandLineTools
--neko ../../command-line.n
+-neko ../../run.n
 -cp src
 -cp ../helpers
 -cp ../project
 -lib nme
 -lib format
--lib swf
 -lib svg
--lib xfl
 --remap flash:nme
 --remap browser:native
--D nme_ver=3.6.0

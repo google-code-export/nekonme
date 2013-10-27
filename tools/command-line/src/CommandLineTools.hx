@@ -234,7 +234,7 @@ class CommandLineTools {
 				context.extensionUpperCase = extension.toUpperCase ();
 				
 				PathHelper.mkdir (title);
-				FileHelper.recursiveCopyTemplate ([ nme + "/templates/default" ], "extension", title, context);
+				FileHelper.recursiveCopyTemplate ([ nme + "/templates" ], "extension", title, context);
 				
 				if (FileSystem.exists (title + "/Extension.hx")) {
 					
@@ -731,7 +731,7 @@ class CommandLineTools {
 		NMEProject._debug = debug;
 		NMEProject._target = target;
 		NMEProject._targetFlags = targetFlags;
-		NMEProject._templatePaths = [ nme + "/templates/default", nme + "/tools/command-line" ];
+		NMEProject._templatePaths = [ nme + "/templates", nme + "/tools/command-line" ];
 		
 		try { Sys.setCwd (Path.directory (projectFile)); } catch (e:Dynamic) {}
 		
@@ -797,7 +797,7 @@ class CommandLineTools {
 				project.debug = debug;
 				project.target = target;
 				project.targetFlags = targetFlags;
-				project.templatePaths = [ nme + "/templates/default", nme + "/tools/command-line" ].concat (project.templatePaths);
+				project.templatePaths = [ nme + "/templates", nme + "/tools/command-line" ].concat (project.templatePaths);
 				
 			}
 			

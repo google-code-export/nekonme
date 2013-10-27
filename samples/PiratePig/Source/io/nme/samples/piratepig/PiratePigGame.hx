@@ -58,7 +58,7 @@ class PiratePigGame extends Sprite {
 	
 	
 	private function addTile (row:Int, column:Int, animate:Bool = true):Void {
-		
+	
 		var tile = null;
 		var type = Math.round (Math.random () * (tileImages.length - 1));
 		

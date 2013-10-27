@@ -1,7 +1,6 @@
 package;
 
 
-import format.XFL;
 import haxe.io.Path;
 import haxe.xml.Fast;
 import sys.io.File;
@@ -13,19 +12,19 @@ import PlatformConfig;
 class NMMLParser extends NMEProject {
 	
 	
-	public var localDefines:StringMap <Dynamic>;
+	public var localDefines:haxe.ds.StringMap<Dynamic>;
 	public var includePaths:Array <String>;
 	
 	private static var varMatch = new EReg("\\${(.*?)}", "");
 	
 	
-	public function new (path:String = "", defines:StringMap <Dynamic> = null, includePaths:Array <String> = null, useExtensionPath:Bool = false) {
+	public function new (path:String = "", defines:haxe.ds.StringMap<Dynamic> = null, includePaths:Array <String> = null, useExtensionPath:Bool = false) {
 		
 		super ();
 		
 		if (defines != null) {
 			
-			localDefines = StringMapHelper.copy (defines);
+			localDefines = StringMapHelper.copy(defines);
 			
 		} else {
 			
@@ -215,9 +214,9 @@ class NMMLParser extends NMEProject {
 					
 					if (FileSystem.exists (includePath)) {
 						
-						if (FileSystem.exists (includePath + "/include.nmml")) {
+						if (FileSystem.exists (includePath + "/include.xml")) {
 							
-							return includePath + "/include.nmml";
+							return includePath + "/include.xml";
 							
 						} else {
 							
@@ -235,9 +234,9 @@ class NMMLParser extends NMEProject {
 		
 		if (FileSystem.exists (base)) {
 			
-			if (FileSystem.exists (base + "/include.nmml")) {
+			if (FileSystem.exists (base + "/include.xml")) {
 				
-				return base + "/include.nmml";
+				return base + "/include.xml";
 				
 			} else {
 				
@@ -807,9 +806,9 @@ class NMMLParser extends NMEProject {
 						
 						var path = Utils.getHaxelib (name);
 						
-						if (FileSystem.exists (path + "/include.nmml")) {
+						if (FileSystem.exists (path + "/include.xml")) {
 							
-							var xml:Fast = new Fast (Xml.parse (File.getContent (path + "/include.nmml")).firstElement ());
+							var xml:Fast = new Fast (Xml.parse (File.getContent (path + "/include.xml")).firstElement ());
 							parseXML (xml, "", path + "/");
 							
 						}*/
@@ -826,9 +825,9 @@ class NMMLParser extends NMEProject {
 						var haxelib = new Haxelib (name, version);
 						var path = PathHelper.getHaxelib (haxelib);
 						
-						if (FileSystem.exists (path + "/include.nmml")) {
+						if (FileSystem.exists (path + "/include.xml")) {
 							
-							var includeProject = new NMMLParser (path + "/include.nmml");
+							var includeProject = new NMMLParser (path + "/include.xml");
 							
 							for (ndll in includeProject.ndlls) {
 								
@@ -885,7 +884,8 @@ class NMMLParser extends NMEProject {
 							
 						}
 						
-						var ndll = new NDLL (name, haxelib);
+                  var register = !element.has.register || substitute(element.att.register)!="false";
+						var ndll = new NDLL(name, haxelib,register);
 						ndll.extensionPath = extensionPath;
 						ndlls.push (ndll);
 					
