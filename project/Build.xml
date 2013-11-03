@@ -452,7 +452,9 @@
    
    
    <set name="name_prefix" value="lib" if="iphone" />
-   
+
+   <set name="openal_libs" value="1" if="sdl_static" unless="iphone" />
+   <set name="openal_libs" value="1" if="openal" unless="iphone" />
    
    <target id="NDLL" output="${name_prefix}nme${debug_extra}${ndll_name_extra}" tool="linker" toolid="${ndll-tool}">
       
@@ -482,7 +484,7 @@
       <files id="blackberry" if="blackberry"/>
       <files id="emscripten" if="emscripten"/>
       
-      <lib name="${THIRDPARTY_LIBS}libfreetype${name_extra}${SLIBEXT}" if="iphone"/>
+      <!-- <lib name="${THIRDPARTY_LIBS}libfreetype${name_extra}${SLIBEXT}" if="iphone"/> -->
       <lib name="${THIRDPARTY_LIBS}libfreetype${name_extra}${SLIBEXT}" unless="no_thirdparty_extras"/>
       <lib name="${THIRDPARTY_LIBS}libjpeg${name_extra}${SLIBEXT}" unless="no_thirdparty_extras"/>
       <lib name="${THIRDPARTY_LIBS}libpng${name_extra}${SLIBEXT}" unless="no_thirdparty_extras"/>
@@ -497,10 +499,8 @@
       <!-- <lib name="${THIRDPARTY_LIBS}libSDL2main${name_extra}${SLIBEXT}" if="windows" unless="sdl" /> -->
       <!-- <lib name="${THIRDPARTY_LIBS}libopenal${name_extra}${SLIBEXT}" if="android" unless="noopenal"/> -->
       <lib name="${THIRDPARTY_LIBS}libopenal${name_extra}${SLIBEXT}" if="linux" unless="noopenal"/>
-      <lib name="${THIRDPARTY_LIBS}libvorbis${name_extra}${SLIBEXT}" if="sdl_static"/>
-      <lib name="${THIRDPARTY_LIBS}libvorbis${name_extra}${SLIBEXT}" if="openal" unless="sdl_static" />
-      <lib name="${THIRDPARTY_LIBS}libogg${name_extra}${SLIBEXT}" if="sdl_static"/>
-      <lib name="${THIRDPARTY_LIBS}libogg${name_extra}${SLIBEXT}" if="openal" unless="sdl_static" />
+      <lib name="${THIRDPARTY_LIBS}libvorbis${name_extra}${SLIBEXT}" if="openal_libs"/>
+      <lib name="${THIRDPARTY_LIBS}libogg${name_extra}${SLIBEXT}" if="openal_libs"/>
       <lib name="${THIRDPARTY_LIBS}libtheora${name_extra}${SLIBEXT}" if="theora" unless="sdl_static" />
       <lib name="${THIRDPARTY_LIBS}libsmpeg${name_extra}${SLIBEXT}" if="sdl_static"/>
       <lib name="${THIRDPARTY_LIBS}libcurl${ssl_extra}${name_extra}${SLIBEXT}" if="sdl_static" unless="iphone"/>

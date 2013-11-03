@@ -42,7 +42,10 @@ class NMEProject
    public var templateContext(get_templateContext, null):Dynamic;
    public var templatePaths:Array<String>;
    public var window:Window;
+   public var component:String;
+
    private var baseTemplateContext:Dynamic;
+
 
    private var defaultApp:ApplicationData;
    private var defaultMeta:MetaData;
@@ -82,6 +85,7 @@ class NMEProject
       initialize();
 
       baseTemplateContext = {};
+      component = null;
       command = _command;
       config = new PlatformConfig();
       debug = _debug;
@@ -107,11 +111,11 @@ class NMEProject
 
             defaultWindow.fps = 0;
 
-         case ANDROID, BLACKBERRY, IOS, WEBOS:
+         case ANDROID, BLACKBERRY, IOS, IOSVIEW, WEBOS:
 
             platformType = PlatformType.MOBILE;
 
-            if (target == Platform.IOS) 
+            if (target == Platform.IOS || target==IOSVIEW) 
             {
                architectures = [ Architecture.ARMV7 ];
             }
@@ -183,6 +187,7 @@ class NMEProject
       project.config = config.clone();
       project.debug = debug;
       project.dependencies = dependencies.copy();
+      project.component = component;
 
       for(key in environment.keys()) 
       {
@@ -395,6 +400,7 @@ class NMEProject
          ObjectHelper.copyUniqueFields(project.certificate, certificate, null);
          config.merge(project.config);
 
+         if (component==null) component = project.component;
          assets = ArrayHelper.concatUnique(assets, project.assets);
          dependencies = ArrayHelper.concatUnique(dependencies, project.dependencies);
          haxeflags = ArrayHelper.concatUnique(haxeflags, project.haxeflags);
@@ -431,6 +437,13 @@ class NMEProject
    private function get_host():Platform 
    {
       return PlatformHelper.hostPlatform;
+   }
+
+   public function getComponent()
+   {
+      if (component==null)
+         return app.file;
+      return component;
    }
 
    private function get_templateContext():Dynamic 
@@ -600,6 +613,7 @@ class NMEProject
       context.WIN_REQUIRE_SHADERS = window.requireShaders;
       context.WIN_DEPTH_BUFFER = window.depthBuffer;
       context.WIN_STENCIL_BUFFER = window.stencilBuffer;
+      context.COMPONENT = getComponent();
 
       if (certificate != null) 
       {

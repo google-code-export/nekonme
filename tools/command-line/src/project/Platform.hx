@@ -5,6 +5,7 @@ enum Platform
    FLASH;
    HTML5;
    IOS;
+   IOSVIEW;
    LINUX;
    MAC;
    WINDOWS;

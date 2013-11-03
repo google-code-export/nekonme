@@ -9,6 +9,7 @@
 
 #import <UIKit/UIKit.h>
 #import <QuartzCore/QuartzCore.h>
+#import <CoreMotion/CMMotionManager.h>
 
 #include <Display.h>
 #include <Surface.h>
@@ -30,35 +31,19 @@ extern "C" void nme_app_set_active(bool inActive);
 
 namespace nme { int gFixedOrientation = -1; }
 
+// viewWillDisappear
 
-@interface NMEAppDelegate : NSObject <UIApplicationDelegate>
-{
-   UIWindow *window;
-   UIViewController *controller;
-   BOOL isRunning;
-   BOOL isPaused;
-}
-- (void) setActive:(BOOL)isActive;
-- (void) startAnimation;
-- (void) pauseAnimation;
-- (void) resumeAnimation;
-- (void) stopAnimation;
-@property (nonatomic, retain) IBOutlet UIWindow *window;
-@property (nonatomic, retain) IBOutlet UIViewController *controller;
+#ifndef IPHONESIM
+CMMotionManager *sgCmManager = 0;
+#endif
+bool sgHasAccelerometer = false;
 
-@end
-
-
-@interface UIStageViewController : UIViewController
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation;
-- (void)loadView;
-@end
 
 
 // This class wraps the CAEAGLLayer from CoreAnimation into a convenient UIView subclass.
 // The view content is basically an EAGL surface you render your OpenGL scene into.
 // Note that setting the view non-opaque will only work if the EAGL surface has an alpha channel.
-@interface UIStageView : UIView<UITextFieldDelegate,UIAccelerometerDelegate>
+@interface UIStageView : UIView<UITextFieldDelegate>
 {    
 @private
    BOOL animating;
@@ -69,12 +54,7 @@ namespace nme { int gFixedOrientation = -1; }
    int    mPrimaryEvent;
 @public
    class IOSStage *mStage;
-
    UITextField *mTextField;
-   UIAccelerometer *mAccelerometer;
-   double mAccX;
-   double mAccY;
-   double mAccZ;
    BOOL mKeyboardEnabled;
    bool   mMultiTouch;
    int    mPrimaryTouchHash;
@@ -99,101 +79,25 @@ namespace nme { int gFixedOrientation = -1; }
 @end
 
 // Global instance ...
-UIStageView *sgMainView = nil;
+UIStageView *sgNMEView = nil;
+
 static FrameCreationCallback sOnFrame = nil;
-static bool sgHardwareRendering = true;
 static bool sgAllowShaders = false;
 static bool sgHasDepthBuffer = true;
 static bool sgHasStencilBuffer = true;
 static bool sgEnableMSAA2 = true;
 static bool sgEnableMSAA4 = true;
-static bool sgVSync = false;
 
 
-
-const void* imageDataProviderGetBytePointer(void* imageData)
-{
-    return imageData;
-}
-
-void deleteImageData(void*, const void* imageData)
-{
-}
-
-CGDataProviderDirectCallbacks providerCallbacks =
-    { 0, imageDataProviderGetBytePointer, deleteImageData, 0, 0 };
 
 
 // --- Stage Implementaton ------------------------------------------------------
-
-
-class IOSSurf : public Surface
-{
-public:
-   int mWidth;
-   int mHeight;
-   unsigned char *mBuffer;
-
-   IOSSurf() { }
-   ~IOSSurf() { }
-
-   int Width() const  { return mWidth; }
-   int Height() const  { return mHeight; }
-   PixelFormat Format()  const { return pfXRGB; }
-   const uint8 *GetBase() const { return (const uint8 *)mBuffer; }
-   int GetStride() const { return mWidth*4; }
-   void Clear(uint32 inColour,const nme::Rect *inRect)
-   {
-      nme::Rect r = inRect ? *inRect : nme::Rect(Width(),Height());
-      int y1 = r.y1();
-      //printf("Clear %d,%d %dx%d   %08x\n", r.x, r.y, r.w, r.h, inColour);
-      for(int y=r.y;y<y1;y++)
-      {
-         uint32 *row = (uint32 *)(mBuffer + (y*mWidth+r.x)*4 );
-         if ( (inColour&0xffffff)==0 )
-            memset(row,0,r.w*4);
-         else if ( (inColour&0xffffff)==0xffffff )
-            memset(row,255,r.w*4);
-         else
-           for(int x=0;x<r.w;x++)
-               *row++ = inColour;
-      }
-   }
-
-   RenderTarget BeginRender(const nme::Rect &inRect, bool inForHitTest=false)
-   {
-      return RenderTarget(nme::Rect(Width(),Height()), Format(), (uint8 *)mBuffer, mWidth*4);
-   }
-   void EndRender() { }
-
-   void BlitTo(const RenderTarget &outTarget,
-               const nme::Rect &inSrcRect,int inPosX, int inPosY,
-               BlendMode inBlend, const BitmapCache *inMask,
-               uint32 inTint=0xffffff ) const
-   {
-   }
-	void BlitChannel(const RenderTarget &outTarget, const nme::Rect &inSrcRect,
-									 int inPosX, int inPosY,
-									 int inSrcChannel, int inDestChannel ) const
-	{
-	}
-
-   void StretchTo(const RenderTarget &outTarget,
-          const nme::Rect &inSrcRect, const DRect &inDestRect) const
-   {
-   }
-};
-
-
-
+// There is a single instance of the stage
 class IOSStage : public nme::Stage
 {
 public:
 
-   unsigned char *mImageData[2];
    int mRenderBuffer;
-   IOSSurf *mSoftwareSurface;
-   CGColorSpaceRef colorSpace;
    bool multisampling;
    bool multisamplingEnabled;
 
@@ -207,54 +111,42 @@ public:
       mLayer = inLayer;
       mDPIScale = 1.0;
       mOGLContext = 0;
-      mImageData[0] = 0;
-      mImageData[1] = 0;
       mRenderBuffer = 0;
-      mSoftwareSurface = 0;
-      colorSpace = CGColorSpaceCreateDeviceRGB();
 
-      if (sgHardwareRendering)
-      {
-         NSString* platform = [UIDeviceHardware platformString];
-         //printf("Detected hardware: %s\n", [platform UTF8String]);
-         
-         //todo ; rather expose this hardware value as a function
-         //and they can disable AA selectively on devices themselves 
-         //rather than hardcoding it here.
-         multisampling = sgEnableMSAA2 || sgEnableMSAA4;
-         
-         
-         if (sgAllowShaders)
-         {
-            mOGLContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
-         }
-         else
-         {
-            mOGLContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES1];
-         }
-         
-         if (!mOGLContext || ![EAGLContext setCurrentContext:mOGLContext])
-         {
-            throw "Could not initilize OpenGL";
-         }
- 
-         CreateOGLFramebuffer();
+      NSString* platform = [UIDeviceHardware platformString];
+      //printf("Detected hardware: %s\n", [platform UTF8String]);
       
-         #ifndef OBJC_ARC
-         mHardwareContext = HardwareContext::CreateOpenGL(inLayer, mOGLContext, sgAllowShaders);
-         #else
-         mHardwareContext = HardwareContext::CreateOpenGL((__bridge void *)inLayer, (__bridge void *)mOGLContext, sgAllowShaders);
-         #endif
-         mHardwareContext->IncRef();
-         mHardwareContext->SetWindowSize(backingWidth, backingHeight);
-         mHardwareSurface = new HardwareSurface(mHardwareContext);
-         mHardwareSurface->IncRef();
+      //todo ; rather expose this hardware value as a function
+      //and they can disable AA selectively on devices themselves 
+      //rather than hardcoding it here.
+      multisampling = sgEnableMSAA2 || sgEnableMSAA4;
+      
+      
+      if (sgAllowShaders)
+      {
+         mOGLContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
       }
       else
       {
-         mSoftwareSurface = new IOSSurf();
-         CreateImageBuffers();
+         mOGLContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES1];
       }
+      
+      if (!mOGLContext || ![EAGLContext setCurrentContext:mOGLContext])
+      {
+         throw "Could not initilize OpenGL";
+      }
+ 
+      CreateOGLFramebuffer();
+   
+      #ifndef OBJC_ARC
+      mHardwareContext = HardwareContext::CreateOpenGL(inLayer, mOGLContext, sgAllowShaders);
+      #else
+      mHardwareContext = HardwareContext::CreateOpenGL((__bridge void *)inLayer, (__bridge void *)mOGLContext, sgAllowShaders);
+      #endif
+      mHardwareContext->IncRef();
+      mHardwareContext->SetWindowSize(backingWidth, backingHeight);
+      mHardwareSurface = new HardwareSurface(mHardwareContext);
+      mHardwareSurface->IncRef();
    }
 
    double getDPIScale() { return mDPIScale; }
@@ -317,33 +209,29 @@ public:
          [mOGLContext release];
          #endif
       }
-      else
-      {
-          DestroyImageBuffers();
-          delete mSoftwareSurface;
-      }
    }
 
    bool getMultitouchSupported() { return true; }
 
    void setMultitouchActive(bool inActive)
    {
-      [ sgMainView enableMultitouch:inActive ];
+      [ sgNMEView enableMultitouch:inActive ];
 
    }
    bool getMultitouchActive()
    {
-      return sgMainView->mMultiTouch;
+      return sgNMEView->mMultiTouch;
    }
 
    bool isOpenGL() const { return mOGLContext; }
 
+   /*
    void RenderState()
    {
-      if ( [sgMainView isAnimating] )
+      if ( [sgNMEView isAnimating] )
          nme::Stage::RenderStage();
    }
-   
+   */
    
    void CreateOGLFramebuffer()
    {
@@ -525,36 +413,10 @@ public:
       defaultFramebuffer = 0;
    }
 
-   void CreateImageBuffers()
-   {
-      backingWidth = [mLayer bounds].size.width;
-      backingHeight = [mLayer bounds].size.height;
-
-      mSoftwareSurface->mWidth = backingWidth;
-      mSoftwareSurface->mHeight = backingHeight;
-
-      int size = backingWidth*backingHeight*4;
-
-      for(int b=0;b<2;b++)
-      {
-         mImageData[b] = new unsigned char[size];
-      }
-   }
-   
-   void OnSoftwareResize(CALayer *inLayer)
-   {
-      DestroyImageBuffers();
-      CreateImageBuffers();
-
-      Event evt(etResize);
-      evt.x = backingWidth;
-      evt.y = backingHeight;
-      HandleEvent(evt);
-   }
-
    void OnOGLResize(CAEAGLLayer *inLayer)
    {   
       // Recreate frame buffers ..
+      //printf("Resize, set ogl %p : %dx%d\n", mOGLContext, backingWidth, backingHeight);
       [EAGLContext setCurrentContext:mOGLContext];
       DestroyOGLFramebuffer();
       CreateOGLFramebuffer();
@@ -569,15 +431,6 @@ public:
 
    }
    
-   void DestroyImageBuffers()
-   {
-      for(int i=0;i<2;i++)
-      {
-         delete [] mImageData[i];
-         mImageData[i] = 0;
-      }
-   }
-
    void OnRedraw()
    {
       Event evt(etRedraw);
@@ -588,7 +441,7 @@ public:
    {
       bool multisamplingEnabledNow = (GetAA() != 1);
       
-      if (sgHardwareRendering && multisampling && multisamplingEnabled != multisamplingEnabledNow)
+      if (multisampling && multisamplingEnabled != multisamplingEnabledNow)
       {
          multisamplingEnabled = multisamplingEnabledNow;
          if (multisamplingEnabled)
@@ -619,7 +472,7 @@ public:
          }
       }
       
-      if (sgHardwareRendering && multisampling && multisamplingEnabled)
+      if (multisampling && multisamplingEnabled)
       {
          if (sgAllowShaders)
          {
@@ -630,7 +483,7 @@ public:
             glBindFramebufferOES(GL_FRAMEBUFFER_OES, msaaFramebuffer);
          }
       }
-      
+    
       Event evt(etPoll);
       HandleEvent(evt);
    }
@@ -649,73 +502,52 @@ public:
 
    void Flip()
    {
-      // printf("flip %d\n", mRenderBuffer);
-      if (sgHardwareRendering)
-      {  
-         if (multisampling && multisamplingEnabled)
-         {
-            // [ddc] code taken from
-            // http://www.gandogames.com/2010/07/tutorial-using-anti-aliasing-msaa-in-the-iphone/
-            // http://is.gd/oHLipb
-            // https://devforums.apple.com/thread/45850
-            //GLenum attachments[] = {GL_DEPTH_ATTACHMENT_OES};
-            //glDiscardFramebufferEXT(GL_READ_FRAMEBUFFER_APPLE, 1, attachments);
-            
-            if (sgAllowShaders)
-            {
-               const GLenum discards[] = {GL_DEPTH_ATTACHMENT,GL_COLOR_ATTACHMENT0};
-               glDiscardFramebufferEXT(GL_READ_FRAMEBUFFER_APPLE, 2, discards);
-            }
-            else
-            {
-               const GLenum discards[] = {GL_DEPTH_ATTACHMENT_OES,GL_COLOR_ATTACHMENT0_OES};
-               glDiscardFramebufferEXT(GL_READ_FRAMEBUFFER_APPLE, 2, discards);
-            }
-            
-            //Bind both MSAA and View FrameBuffers.
-            if (sgAllowShaders)
-            {
-               glBindFramebuffer(GL_READ_FRAMEBUFFER_APPLE, msaaFramebuffer);
-               glBindFramebuffer(GL_DRAW_FRAMEBUFFER_APPLE, defaultFramebuffer);
-            }
-            else
-            {
-               glBindFramebufferOES(GL_READ_FRAMEBUFFER_APPLE, msaaFramebuffer);
-               glBindFramebufferOES(GL_DRAW_FRAMEBUFFER_APPLE, defaultFramebuffer);
-            }
-            
-            // Call a resolve to combine both buffers
-            glResolveMultisampleFramebufferAPPLE();
-            // Present final image to screen
-         }
+      if (multisampling && multisamplingEnabled)
+      {
+         // [ddc] code taken from
+         // http://www.gandogames.com/2010/07/tutorial-using-anti-aliasing-msaa-in-the-iphone/
+         // http://is.gd/oHLipb
+         // https://devforums.apple.com/thread/45850
+         //GLenum attachments[] = {GL_DEPTH_ATTACHMENT_OES};
+         //glDiscardFramebufferEXT(GL_READ_FRAMEBUFFER_APPLE, 1, attachments);
          
          if (sgAllowShaders)
          {
-            glBindRenderbuffer(GL_RENDERBUFFER, colorRenderbuffer);
-            [mOGLContext presentRenderbuffer:GL_RENDERBUFFER];
+            const GLenum discards[] = {GL_DEPTH_ATTACHMENT,GL_COLOR_ATTACHMENT0};
+            glDiscardFramebufferEXT(GL_READ_FRAMEBUFFER_APPLE, 2, discards);
          }
          else
          {
-            glBindRenderbufferOES(GL_RENDERBUFFER_OES, colorRenderbuffer);
-            [mOGLContext presentRenderbuffer:GL_RENDERBUFFER_OES];
+            const GLenum discards[] = {GL_DEPTH_ATTACHMENT_OES,GL_COLOR_ATTACHMENT0_OES};
+            glDiscardFramebufferEXT(GL_READ_FRAMEBUFFER_APPLE, 2, discards);
          }
+         
+         //Bind both MSAA and View FrameBuffers.
+         if (sgAllowShaders)
+         {
+            glBindFramebuffer(GL_READ_FRAMEBUFFER_APPLE, msaaFramebuffer);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER_APPLE, defaultFramebuffer);
+         }
+         else
+         {
+            glBindFramebufferOES(GL_READ_FRAMEBUFFER_APPLE, msaaFramebuffer);
+            glBindFramebufferOES(GL_DRAW_FRAMEBUFFER_APPLE, defaultFramebuffer);
+         }
+         
+         // Call a resolve to combine both buffers
+         glResolveMultisampleFramebufferAPPLE();
+         // Present final image to screen
+      }
+      
+      if (sgAllowShaders)
+      {
+         glBindRenderbuffer(GL_RENDERBUFFER, colorRenderbuffer);
+         [mOGLContext presentRenderbuffer:GL_RENDERBUFFER];
       }
       else
       {
-         int size = backingWidth*backingHeight*4;
-         CGDataProviderRef dataProvider = CGDataProviderCreateDirect(mImageData[mRenderBuffer], size, &providerCallbacks);
-         
-         CGImageRef imageRef = CGImageCreate( backingWidth, backingHeight,
-                8, 32, backingWidth*4, colorSpace,
-                kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little,
-                dataProvider, 0, false, kCGRenderingIntentDefault);
-         
-         mLayer.contents = (NSNumber *)imageRef;
-         
-         CGDataProviderRelease(dataProvider);
-         CGImageRelease(imageRef);
-         
-         mRenderBuffer = 1-mRenderBuffer;
+         glBindRenderbufferOES(GL_RENDERBUFFER_OES, colorRenderbuffer);
+         [mOGLContext presentRenderbuffer:GL_RENDERBUFFER_OES];
       }
    }
 
@@ -727,10 +559,7 @@ public:
    
    Surface *GetPrimarySurface()
    {
-      if (mHardwareSurface)
-         return mHardwareSurface;
-      mSoftwareSurface->mBuffer = mImageData[ mRenderBuffer ];
-      return mSoftwareSurface;
+      return mHardwareSurface;
    }
 
    void SetCursor(nme::Cursor)
@@ -782,87 +611,12 @@ public:
 };
 
 
-// --- UIStageViewController ----------------------------------------------------------
-
-
-
-@implementation UIStageViewController
-
-#define UIInterfaceOrientationPortraitMask (1 << UIInterfaceOrientationPortrait)
-#define UIInterfaceOrientationLandscapeLeftMask  (1 << UIInterfaceOrientationLandscapeLeft)
-#define UIInterfaceOrientationLandscapeRightMask  (1 << UIInterfaceOrientationLandscapeRight)
-#define UIInterfaceOrientationPortraitUpsideDownMask  (1 << UIInterfaceOrientationPortraitUpsideDown)
-   
-#define UIInterfaceOrientationLandscapeMask   (UIInterfaceOrientationLandscapeLeftMask | UIInterfaceOrientationLandscapeRightMask)
-#define UIInterfaceOrientationAllMask  (UIInterfaceOrientationPortraitMask | UIInterfaceOrientationLandscapeLeftMask | UIInterfaceOrientationLandscapeRightMask | UIInterfaceOrientationPortraitUpsideDownMask)
-#define UIInterfaceOrientationAllButUpsideDownMask  (UIInterfaceOrientationPortraitMask | UIInterfaceOrientationLandscapeLeftMask | UIInterfaceOrientationLandscapeRightMask)
-
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
-{
-   if (gFixedOrientation >= 0)
-      return interfaceOrientation == gFixedOrientation;
-   Event evt(etShouldRotate);
-   evt.value = interfaceOrientation;
-   sgMainView->mStage->OnEvent(evt);
-   return evt.result == 2;
-}
-
-- (NSUInteger)supportedInterfaceOrientations
-{
-   int mask = 1;
-   bool isOverridden = false;
-
-   if ([self shouldAutorotateToInterfaceOrientation:UIInterfaceOrientationLandscapeLeft]) {
-      isOverridden = true;
-      mask = UIInterfaceOrientationLandscapeLeftMask;
-   }
-
-   if ([self shouldAutorotateToInterfaceOrientation:UIInterfaceOrientationLandscapeRight]) {
-      if (isOverridden) {
-         mask |= UIInterfaceOrientationLandscapeRightMask;
-      } else {
-         isOverridden = true;
-         mask = UIInterfaceOrientationLandscapeRightMask;
-      }
-   }
-
-   if ([self shouldAutorotateToInterfaceOrientation:UIInterfaceOrientationPortraitUpsideDown]) {
-      if (isOverridden) {
-         mask |= UIInterfaceOrientationPortraitUpsideDownMask;
-      } else {
-         isOverridden = true;
-         mask = UIInterfaceOrientationPortraitUpsideDownMask;
-      }
-   }
-
-   if ([self shouldAutorotateToInterfaceOrientation:UIInterfaceOrientationPortrait]) {
-      if (isOverridden) {
-         mask |= UIInterfaceOrientationPortraitMask;
-      } else {
-         isOverridden = true;
-         mask = UIInterfaceOrientationPortraitMask;
-      }
-   }
-
-   if (!isOverridden) {
-      mask = UIInterfaceOrientationAllMask;
-   }
-   return mask;
-}
-
-- (void)loadView
-{
-   UIStageView *view = [[UIStageView alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-   self.view = view;
-}
-
-@end
-
 
 
 
 // --- UIStageView -------------------------------------------------------------------
 
+static NSString *sgDisplayLinkMode = NSRunLoopCommonModes;
 @implementation UIStageView
 
 @synthesize animating;
@@ -871,10 +625,7 @@ public:
 // You must implement this method
 + (Class) layerClass
 {
-   if (sgHardwareRendering)
-      return [CAEAGLLayer class];
-   else
-      return [super layerClass];
+  return [CAEAGLLayer class];
 }
 
 //The GL view is stored in the nib file. When it's unarchived it's sent -initWithCoder:
@@ -883,7 +634,7 @@ public:
 {    
    if ((self = [super initWithCoder:coder]))
    {
-      sgMainView = self;
+      sgNMEView = self;
       [self myInit];
       return self;
    }
@@ -895,7 +646,7 @@ public:
 {    
    if ((self = [super initWithFrame:frame]))
    {
-      sgMainView = self;
+      sgNMEView = self;
       self.autoresizingMask = UIViewAutoresizingFlexibleWidth |
                               UIViewAutoresizingFlexibleHeight;
       [self myInit];
@@ -908,41 +659,29 @@ public:
 - (void) myInit
 {
       // Get the layer
-      if (sgHardwareRendering)
-      {
-         CAEAGLLayer *eaglLayer = (CAEAGLLayer *)self.layer;
+      CAEAGLLayer *eaglLayer = (CAEAGLLayer *)self.layer;
 
-         eaglLayer.opaque = TRUE;
-         eaglLayer.drawableProperties = [NSDictionary dictionaryWithObjectsAndKeys:
-                                         [NSNumber numberWithBool:FALSE], kEAGLDrawablePropertyRetainedBacking,
-                                         kEAGLColorFormatRGBA8, kEAGLDrawablePropertyColorFormat,
-                                         nil];
-      }
+      eaglLayer.opaque = TRUE;
+      eaglLayer.drawableProperties = [NSDictionary dictionaryWithObjectsAndKeys:
+                                     [NSNumber numberWithBool:FALSE], kEAGLDrawablePropertyRetainedBacking,
+                                      kEAGLColorFormatRGBA8, kEAGLDrawablePropertyColorFormat,
+                                      nil];
 
       mStage = new IOSStage(self.layer,true);
 
       // Set scaling to ensure 1:1 pixels ...
       if([[UIScreen mainScreen] respondsToSelector: NSSelectorFromString(@"scale")])
       {
-	      if([self respondsToSelector: NSSelectorFromString(@"contentScaleFactor")])
-	      {
-		      mStage->mDPIScale = [[UIScreen mainScreen] scale];
-		      self.contentScaleFactor = mStage->mDPIScale;
-	      }
+         if([self respondsToSelector: NSSelectorFromString(@"contentScaleFactor")])
+         {
+            mStage->mDPIScale = [[UIScreen mainScreen] scale];
+            self.contentScaleFactor = mStage->mDPIScale;
+         }
       }
 
   
-      mAccelerometer = [UIAccelerometer sharedAccelerometer];
-      mAccelerometer.updateInterval = 0.033;
-      mAccelerometer.delegate = self;
-     
-      mAccX = 0.0;
-      mAccY = -1.0;
-      mAccZ = 0.0;
-      animating = FALSE;
       displayLinkSupported = FALSE;
       animationFrameInterval = 1;
-      displayLink = nil;
       animationTimer = nil;
       mTextField = nil;
       mKeyboardEnabled = NO;
@@ -951,52 +690,54 @@ public:
       mPrimaryTouchHash = 0;
 
 
-      // A system version of 3.1 or greater is required to use CADisplayLink. The NSTimer
-      // class is used as fallback when it isn't available.
-      /*
-      NSString *reqSysVer = @"3.1";
-      NSString *currSysVer = [[UIDevice currentDevice] systemVersion];
-      if ([currSysVer compare:reqSysVer options:NSNumericSearch] != NSOrderedAscending)
-         displayLinkSupported = TRUE;
-      */
+      animating = true;
+      displayLink = [NSClassFromString(@"CADisplayLink") displayLinkWithTarget:self selector:@selector(mainLoop:)];
+      [displayLink setFrameInterval:animationFrameInterval];
+      [displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:sgDisplayLinkMode];
 
-      //displayLinkSupported = FALSE;
-      //displayLinkSupported = TRUE;
-
-      if (sgVSync) {
-        displayLink = [NSClassFromString(@"CADisplayLink") displayLinkWithTarget:self selector:@selector(mainLoop:)];
-        [displayLink setFrameInterval:animationFrameInterval];
-        [displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+      #ifndef IPHONESIM
+      if (!sgCmManager)
+      {
+         sgCmManager = [[CMMotionManager alloc]init];
+         if ([sgCmManager isAccelerometerAvailable])
+         {
+           sgCmManager.accelerometerUpdateInterval = 0.033;
+           [sgCmManager startAccelerometerUpdates];
+           sgHasAccelerometer = true;
+         }
       }
-/*
-      Event evt(etResize);
-      evt.x = mStage->Width();
-      evt.y = mStage->Height();
-      mStage->HandleEvent(evt);
-*/
+      #endif
 }
 
 
-- (void) startAnimation {
-  animating = true;
+- (void) startAnimation
+{
+   if (!animating)
+   {
+      [displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:sgDisplayLinkMode];
+      animating = true;
+   }
 }
 
-- (void) stopAnimation {
-  animating = false;
+- (void) stopAnimation
+{
+   if (animating)
+   {
+      [displayLink removeFromRunLoop:[NSRunLoop currentRunLoop] forMode:sgDisplayLinkMode];
+      animating = false;
+   }
 }
 
-- (void) mainLoop:(id) sender {
-  if (animating) {
-    [self onPoll:sender];
-  }
+- (void) mainLoop:(id) sender
+{
+   if (animating)
+      [self onPoll:sender];
 }
 
-- (void)accelerometer:(UIAccelerometer *)accelerometer didAccelerate:(UIAcceleration *)acceleration {
-   mAccX = acceleration.x;
-   mAccY = acceleration.y;
-   mAccZ = acceleration.z;
+- (void)didMoveToWindow
+{
+   nme_app_set_active(self.window!=nil);
 }
-
 
 - (BOOL)canBecomeFirstResponder { return YES; }
 
@@ -1211,7 +952,7 @@ public:
              mTextField.secureTextEntry = NO;   
              mTextField.hidden = YES;
 
-	     [self addSubview: mTextField];
+        [self addSubview: mTextField];
 
           }
           [mTextField becomeFirstResponder];
@@ -1237,10 +978,7 @@ public:
 
 - (void) layoutSubviews
 {
-   if (sgHardwareRendering)
-      mStage->OnOGLResize((CAEAGLLayer*)self.layer);
-   else
-      mStage->OnSoftwareResize(self.layer);
+   mStage->OnOGLResize((CAEAGLLayer*)self.layer);
 }
 
 #ifndef OBJC_ARC
@@ -1259,23 +997,126 @@ public:
 
 double sgWakeUp = 0.0;
 
+
+
+
+// --- UIStageViewController ----------------------------------------------------------
+// The NMEAppDelegate + UIStageViewController control the application when created in stand-alone mode
+
+
+@interface UIStageViewController : UIViewController
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation;
+- (void)loadView;
+@end
+
+
+@implementation UIStageViewController
+
+#define UIInterfaceOrientationPortraitMask (1 << UIInterfaceOrientationPortrait)
+#define UIInterfaceOrientationLandscapeLeftMask  (1 << UIInterfaceOrientationLandscapeLeft)
+#define UIInterfaceOrientationLandscapeRightMask  (1 << UIInterfaceOrientationLandscapeRight)
+#define UIInterfaceOrientationPortraitUpsideDownMask  (1 << UIInterfaceOrientationPortraitUpsideDown)
+   
+#define UIInterfaceOrientationLandscapeMask   (UIInterfaceOrientationLandscapeLeftMask | UIInterfaceOrientationLandscapeRightMask)
+#define UIInterfaceOrientationAllMask  (UIInterfaceOrientationPortraitMask | UIInterfaceOrientationLandscapeLeftMask | UIInterfaceOrientationLandscapeRightMask | UIInterfaceOrientationPortraitUpsideDownMask)
+#define UIInterfaceOrientationAllButUpsideDownMask  (UIInterfaceOrientationPortraitMask | UIInterfaceOrientationLandscapeLeftMask | UIInterfaceOrientationLandscapeRightMask)
+
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
+{
+   if (gFixedOrientation >= 0)
+      return interfaceOrientation == gFixedOrientation;
+   Event evt(etShouldRotate);
+   evt.value = interfaceOrientation;
+   sgNMEView->mStage->OnEvent(evt);
+   return evt.result == 2;
+}
+
+- (NSUInteger)supportedInterfaceOrientations
+{
+   int mask = 1;
+   bool isOverridden = false;
+
+   if ([self shouldAutorotateToInterfaceOrientation:UIInterfaceOrientationLandscapeLeft]) {
+      isOverridden = true;
+      mask = UIInterfaceOrientationLandscapeLeftMask;
+   }
+
+   if ([self shouldAutorotateToInterfaceOrientation:UIInterfaceOrientationLandscapeRight]) {
+      if (isOverridden) {
+         mask |= UIInterfaceOrientationLandscapeRightMask;
+      } else {
+         isOverridden = true;
+         mask = UIInterfaceOrientationLandscapeRightMask;
+      }
+   }
+
+   if ([self shouldAutorotateToInterfaceOrientation:UIInterfaceOrientationPortraitUpsideDown]) {
+      if (isOverridden) {
+         mask |= UIInterfaceOrientationPortraitUpsideDownMask;
+      } else {
+         isOverridden = true;
+         mask = UIInterfaceOrientationPortraitUpsideDownMask;
+      }
+   }
+
+   if ([self shouldAutorotateToInterfaceOrientation:UIInterfaceOrientationPortrait]) {
+      if (isOverridden) {
+         mask |= UIInterfaceOrientationPortraitMask;
+      } else {
+         isOverridden = true;
+         mask = UIInterfaceOrientationPortraitMask;
+      }
+   }
+
+   if (!isOverridden) {
+      mask = UIInterfaceOrientationAllMask;
+   }
+   return mask;
+}
+
+- (void)loadView
+{
+   UIStageView *view = [[UIStageView alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+   self.view = view;
+}
+
+@end
+
+
+
+
 // --- NMEAppDelegate ----------------------------------------------------------
 
 class UIViewFrame : public nme::Frame
 {
 public:
+   UIStageView *mView;
+
+   UIViewFrame(UIStageView *inView) : mView(inView) { }
+
    virtual void SetTitle()  { }
    virtual void SetIcon() { }
-   virtual Stage *GetStage()  { return sgMainView->mStage; }
+   virtual Stage *GetStage()  { return mView->mStage; }
 
 };
+
+
+
+@interface NMEAppDelegate : NSObject <UIApplicationDelegate>
+{
+   UIWindow *window;
+   UIViewController *controller;
+}
+@property (nonatomic, retain) IBOutlet UIWindow *window;
+@property (nonatomic, retain) IBOutlet UIViewController *controller;
+
+@end
+
 
 @implementation NMEAppDelegate
 
 @synthesize window;
 @synthesize controller;
-
-namespace nme {}
 
 - (void) applicationDidFinishLaunching:(UIApplication *)application
 {
@@ -1288,75 +1129,23 @@ namespace nme {}
    self.window.rootViewController = c;
    nme_app_set_active(true);
    application.idleTimerDisabled = YES;
-   sOnFrame( new UIViewFrame() );
+   sOnFrame( new UIViewFrame((UIStageView *)c.view) );
 }
 
-- (void) mainLoop {
-   isRunning = YES;
-   /*while (isRunning) {
-      while(CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, TRUE) == kCFRunLoopRunHandledSource);
-
-      //if (paused) {
-         //usleep(250000); // Sleep for a quarter of a second (250,000 microseconds) so that the framerate is 4 fps.
-      //}
-      
-      sgMainView->mStage->OnPoll();
-      
-      while(CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, TRUE) == kCFRunLoopRunHandledSource);
-   }*/
-   while(isRunning /*&& !sgTerminated*/)
-   {
-       double delta = sgMainView->mStage->GetNextWake() - GetTimeStamp();
-       if (delta<0) delta = 0;
-       if (CFRunLoopRunInMode(kCFRunLoopDefaultMode,delta,TRUE) != kCFRunLoopRunHandledSource)
-       {
-          sgMainView->mStage->OnPoll();
-       }
-   }
-}
-
-- (void) startAnimation
+- (void) applicationWillResignActive:(UIApplication *)application
 {
-    if (!isPaused && !sgVSync)
-       [self performSelectorOnMainThread:@selector(mainLoop) withObject:nil waitUntilDone:NO];
-
-    if (!isPaused) {
-        isRunning = YES;
-        [((UIStageView *)controller.view) startAnimation];
-    }
+   nme_app_set_active(false);
 }
 
-- (void) pauseAnimation
+- (void) applicationDidBecomeActive:(UIApplication *)application
 {
-   isPaused = YES;
-   [self stopAnimation];
+   nme_app_set_active(true);
 }
 
-- (void) resumeAnimation
+- (void) applicationWillTerminate:(UIApplication *)application
 {
-   isPaused = NO;
-   [self startAnimation];
+   nme_app_set_active(false);
 }
-
-- (void) stopAnimation
-{
-   isRunning = NO;
-   [((UIStageView *)controller.view) stopAnimation];
-}
-
-- (void) setActive:(BOOL)isActive
-{
-   if (isActive) {
-      [self startAnimation];
-   } else {
-      [self stopAnimation];
-   }
-   nme_app_set_active(isActive);
-}
-
-- (void) applicationWillResignActive:(UIApplication *)application {[self setActive:false];} 
-- (void) applicationDidBecomeActive:(UIApplication *)application {[self setActive:true];} 
-- (void) applicationWillTerminate:(UIApplication *)application {[self setActive:false];} 
 
 #ifndef OBJC_ARC
 - (void) dealloc
@@ -1375,58 +1164,73 @@ namespace nme {}
 
 void EnableKeyboard(bool inEnable)
 {
-   [ sgMainView enableKeyboard:inEnable];
+   [ sgNMEView enableKeyboard:inEnable];
 }
 
 
-/*
- These aren't part of the offical SDK
-extern "C"
-{
-   extern int *_NSGetArgc(void);
-   extern char ***_NSGetArgv(void);
-};
-*/
+// Used when view is created as a child, rather than by application
+UIView *nmeParentView = 0;
 
 
 namespace nme
 {
-Stage *IPhoneGetStage() { return sgMainView->mStage; }
 
-void StartAnimation() {
-   NMEAppDelegate *appDelegate = (NMEAppDelegate *)[[UIApplication sharedApplication] delegate];
-   [appDelegate startAnimation];
-}
-void PauseAnimation() {
-   NMEAppDelegate *appDelegate = (NMEAppDelegate *)[[UIApplication sharedApplication] delegate];
-   [appDelegate pauseAnimation];
-}
-void ResumeAnimation() {
-   NMEAppDelegate *appDelegate = (NMEAppDelegate *)[[UIApplication sharedApplication] delegate];
-   [appDelegate resumeAnimation];
-}
-void StopAnimation() {
-   NMEAppDelegate *appDelegate = (NMEAppDelegate *)[[UIApplication sharedApplication] delegate];
-   [appDelegate stopAnimation];
-}
-void SetNextWakeUp(double inWakeUp) { sgWakeUp = inWakeUp; }
-
-int GetDeviceOrientation() {
-
-	return ( [UIDevice currentDevice].orientation );
+Stage *IPhoneGetStage()
+{
+   return sgNMEView->mStage;
 }
 
-double CapabilitiesGetPixelAspectRatio() {
-	
-	//CGRect screenBounds = [[UIScreen mainScreen] bounds];
-	//return screenBounds.size.width / screenBounds.size.height;
-	
-	return 1;
-	
+void StartAnimation()
+{
+   if (sgNMEView)
+   {
+      [sgNMEView startAnimation];
+   }
 }
-	
-double CapabilitiesGetScreenDPI() {
-	CGFloat screenScale = 1;
+void PauseAnimation()
+{
+   if (sgNMEView)
+   {
+      [sgNMEView stopAnimation];
+   }
+}
+void ResumeAnimation()
+{
+   if (sgNMEView)
+   {
+      [sgNMEView startAnimation];
+   }
+}
+void StopAnimation()
+{
+   if (sgNMEView)
+   {
+      [sgNMEView stopAnimation];
+   }
+}
+
+void SetNextWakeUp(double inWakeUp)
+{
+   sgWakeUp = inWakeUp;
+}
+
+int GetDeviceOrientation()
+{
+
+   return ( [UIDevice currentDevice].orientation );
+}
+
+double CapabilitiesGetPixelAspectRatio()
+{
+   //CGRect screenBounds = [[UIScreen mainScreen] bounds];
+   //return screenBounds.size.width / screenBounds.size.height;
+   return 1;
+   
+}
+   
+double CapabilitiesGetScreenDPI()
+{
+   CGFloat screenScale = 1;
     if ([[UIScreen mainScreen] respondsToSelector:@selector(scale)]) {
         screenScale = [[UIScreen mainScreen] scale];
     }
@@ -1439,34 +1243,34 @@ double CapabilitiesGetScreenDPI() {
         dpi = 160 * screenScale;
     }
     
-	return dpi;
+   return dpi;
 }
 
-double CapabilitiesGetScreenResolutionX() {
-
-	CGRect screenBounds = [[UIScreen mainScreen] bounds];
+double CapabilitiesGetScreenResolutionX()
+{
+   CGRect screenBounds = [[UIScreen mainScreen] bounds];
    if([[UIScreen mainScreen] respondsToSelector: NSSelectorFromString(@"scale")])
    {
-   	CGFloat screenScale = [[UIScreen mainScreen] scale];
-   	CGSize screenSize = CGSizeMake(screenBounds.size.width * screenScale, screenBounds.size.height * screenScale);
-   	return screenSize.width;
+      CGFloat screenScale = [[UIScreen mainScreen] scale];
+      CGSize screenSize = CGSizeMake(screenBounds.size.width * screenScale, screenBounds.size.height * screenScale);
+      return screenSize.width;
    }
    return screenBounds.size.width;
 }
-	
-double CapabilitiesGetScreenResolutionY() {
-
-	CGRect screenBounds = [[UIScreen mainScreen] bounds];
+   
+double CapabilitiesGetScreenResolutionY()
+{
+   CGRect screenBounds = [[UIScreen mainScreen] bounds];
    if([[UIScreen mainScreen] respondsToSelector: NSSelectorFromString(@"scale")])
    {
-   	CGFloat screenScale = [[UIScreen mainScreen] scale];
-   	CGSize screenSize = CGSizeMake(screenBounds.size.width * screenScale, screenBounds.size.height * screenScale);
-   	return screenSize.height;
+      CGFloat screenScale = [[UIScreen mainScreen] scale];
+      CGSize screenSize = CGSizeMake(screenBounds.size.width * screenScale, screenBounds.size.height * screenScale);
+      return screenSize.height;
    }
-   return screenBounds.size.height;	
-}	
-	
-	
+   return screenBounds.size.height;   
+}   
+   
+   
 void CreateMainFrame(FrameCreationCallback inCallback,
    int inWidth,int inHeight,unsigned int inFlags, const char *inTitle, Surface *inIcon )
 {
@@ -1474,31 +1278,39 @@ void CreateMainFrame(FrameCreationCallback inCallback,
    int argc = 0;// *_NSGetArgc();
    char **argv = 0;// *_NSGetArgv();
 
-   sgHardwareRendering = ( inFlags & wfHardware );
    sgAllowShaders = ( inFlags & wfAllowShaders );
    sgHasDepthBuffer = ( inFlags & wfDepthBuffer );
    sgHasStencilBuffer = ( inFlags & wfStencilBuffer );
    sgEnableMSAA2 = ( inFlags & wfHW_AA );
    sgEnableMSAA4 = ( inFlags & wfHW_AA_HIRES );
-   sgVSync = ( inFlags & wfVSync );
 
-      //can't have a stencil buffer on it's own, 
-    if(sgHasStencilBuffer && !sgHasDepthBuffer) {
+   //can't have a stencil buffer on it's own, 
+   if(sgHasStencilBuffer && !sgHasDepthBuffer)
       sgHasDepthBuffer = true;
-    }
 
-   //printf("Flags %08x %d\n", inFlags, sgHardwareRendering);
-   if (!sgHardwareRendering)
-      gC0IsRed = false;
+   if (nmeParentView)
+   {
+      double width = nmeParentView.frame.size.width;
+      double height = nmeParentView.frame.size.height;
+      UIStageView *view = [[UIStageView alloc] initWithFrame:CGRectMake(0.0,0.0,width,height)];
 
+      [nmeParentView  addSubview:view];
+      // application.idleTimerDisabled = YES;
+      sOnFrame( new UIViewFrame(view) );
 
-   #ifndef OBJC_ARC
-   NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
-   #endif
-   UIApplicationMain(argc, argv, nil, @"NMEAppDelegate");
-   #ifndef OBJC_ARC
-   [pool release];
-   #endif
+      [view startAnimation];
+      nmeParentView = 0;
+   }
+   else
+   {
+      #ifndef OBJC_ARC
+      NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
+      #endif
+      UIApplicationMain(argc, argv, nil, @"NMEAppDelegate");
+      #ifndef OBJC_ARC
+      [pool release];
+      #endif
+   }
 }
 
 bool GetAcceleration(double &outX, double &outY, double &outZ)
@@ -1506,11 +1318,14 @@ bool GetAcceleration(double &outX, double &outY, double &outZ)
 #ifdef IPHONESIM
    return false;
 #else
-   if (!sgMainView)
+   if (!sgCmManager || sgHasAccelerometer)
       return false;
-   outX = sgMainView->mAccX;
-   outY = sgMainView->mAccY;
-   outZ = sgMainView->mAccZ;
+
+   CMAcceleration a = sgCmManager.accelerometerData.acceleration;
+
+   outX = a.x;
+   outY = a.y;
+   outZ = a.z;
    return true;
 #endif
 }
@@ -1537,8 +1352,8 @@ FILE *OpenRead(const char *inName)
       if (!result)
       {
          std::string doc;
-		 GetSpecialDir(DIR_USER, doc);
-		 doc += gAssetBase + inName;
+       GetSpecialDir(DIR_USER, doc);
+       doc += gAssetBase + inName;
          //printf("Try doc %s.\n", doc.c_str());
          result = fopen(doc.c_str(),"rb");
       }
@@ -1570,10 +1385,10 @@ FILE *OpenOverwrite(const char *inName)
     //NSLog(@"path name I'm wrinting to = %@", path);
     
 
-	if ( ! [[NSFileManager defaultManager] fileExistsAtPath: [path stringByDeletingLastPathComponent]] ) {
+   if ( ! [[NSFileManager defaultManager] fileExistsAtPath: [path stringByDeletingLastPathComponent]] ) {
         //NSLog(@"directory doesn't exist, creating it");
-		[[NSFileManager defaultManager] createDirectoryAtPath:[path stringByDeletingLastPathComponent] withIntermediateDirectories:YES  attributes:nil error:NULL];
-	}
+      [[NSFileManager defaultManager] createDirectoryAtPath:[path stringByDeletingLastPathComponent] withIntermediateDirectories:YES  attributes:nil error:NULL];
+   }
 
     FILE * result = fopen([path cStringUsingEncoding:1],"w");
     #ifndef OBJC_ARC
@@ -1582,7 +1397,30 @@ FILE *OpenOverwrite(const char *inName)
     return result;
 }
 
+
+
+void nmeSetParentView(void *inParent)
+{
+   nmeParentView = (UIView *)inParent;
 }
+
+
+void nmeReparentNMEView(void *inParent)
+{
+   UIView *parent = (UIView *)inParent;
+
+   if (sgNMEView!=nil)
+   {
+      [parent  addSubview:sgNMEView];
+
+      [sgNMEView startAnimation];
+   }
+}
+
+
+} // namespace nme
+
+
 
 extern "C"
 {

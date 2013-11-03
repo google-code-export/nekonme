@@ -83,6 +83,7 @@ enum EventResult
 {
    erOk,
    erCancel,
+   erSpecial,
 };
 
 struct Event

@@ -6,43 +6,99 @@ import sys.io.File;
 import sys.FileSystem;
 import PlatformConfig;
 
-class IOSPlatform implements IPlatformTool 
+class IOSView implements IPlatformTool 
 {
+   var component:String;
+   var valid_archs:Array<String>;
+
+   public function new(inComponent:String)
+   {
+      component = inComponent;
+   }
+
+
    public function build(project:NMEProject):Void 
    {
+      var context = generateContext(project);
+
+      var nmeLib = new Haxelib("nme");
+
+      for(asset in project.assets) 
+      {
+         asset.resourceName = asset.flatName;
+      }
+
+
       var targetDirectory = PathHelper.combine(project.app.path, "ios");
+      var name = project.app.file;
+      //var outputDirectory = '$targetDirectory/$name.framework/';
+      var outputDirectory = '$targetDirectory/$name/';
+      var buildDir = targetDirectory + "/build/";
 
-      IOSHelper.build(project, project.app.path + "/ios");
 
-        if (!project.targetFlags.exists("simulator")) 
-        {
-            var entitlements = targetDirectory + "/" + project.app.file + "/" + project.app.file + "-Entitlements.plist";
+      for(asset in project.assets) 
+         asset.resourceName = asset.flatName;
 
-            IOSHelper.sign(project, targetDirectory + "/bin", entitlements);
-        }
+
+      PathHelper.mkdir(targetDirectory);
+      PathHelper.mkdir(outputDirectory);
+
+
+/*
+      PathHelper.mkdir(outputDirectory + "/Versions");
+      PathHelper.mkdir(outputDirectory + "/Versions/A");
+      PathHelper.mkdir(outputDirectory + "/Versions/A/Headers");
+      PathHelper.mkdir(outputDirectory + "/Versions/A/Resources");
+*/
+
+      PathHelper.mkdir(buildDir);
+      PathHelper.mkdir(buildDir + "/cpp");
+
+      FileHelper.copyFileTemplate(project.templatePaths, "ios-view/FrameworkInterface.mm", buildDir+"/cpp/FrameworkInterface.mm", context);
+      //FileHelper.copyFileTemplate(project.templatePaths, "ios-view/Info.plist", outputDirectory+"/Versions/A/Resources/Info.plist", context);
+      FileHelper.recursiveCopyTemplate(project.templatePaths, "ios-view/build", buildDir, context);
+      FileHelper.copyFileTemplate(project.templatePaths, "ios-view/HEADER.h", outputDirectory+"/"+name + ".h", context);
+      FileHelper.copyFileTemplate(project.templatePaths, "ios-view/HEADER.h",  buildDir+"/cpp/FrameworkHeader.h", context);
+
+      //ProcessHelper.runCommand(outputDirectory + "/Versions", "ln", [ "-s", "A", "Current"] );
+      //ProcessHelper.runCommand(outputDirectory, "ln", [ "-s", "Versions/Current/Headers", "Headers"] );
+      //ProcessHelper.runCommand(outputDirectory, "ln", [ "-s", "Versions/Current/Resources", "Resources"] );
+      //ProcessHelper.runCommand(outputDirectory, "ln", [ "-s", "Versions/Current/" + name, name] );
+
+      ProcessHelper.runCommand(buildDir, "make", [] );
    }
 
    public function clean(project:NMEProject):Void 
    {
+      #if false
       var targetPath = project.app.path + "/ios";
 
       if (FileSystem.exists(targetPath)) 
       {
          PathHelper.removeDirectory(targetPath);
       }
+      #end
    }
 
    public function display(project:NMEProject):Void 
    {
-      var hxml = PathHelper.findTemplate(project.templatePaths, "ios/PROJ/haxe/Build.hxml");
+      #if false
+      var hxml = PathHelper.findTemplate(project.templatePaths, "iphone/PROJ/haxe/Build.hxml");
       var template = new Template(File.getContent(hxml));
       Sys.println(template.execute(generateContext(project)));
+      #end
    }
 
    private function generateContext(project:NMEProject):Dynamic 
    {
       project = project.clone();
-      project.sources = PathHelper.relocatePaths(project.sources, PathHelper.combine(project.app.path, "ios/" + project.app.file + "/haxe"));
+
+      var targetDirectory = PathHelper.combine(project.app.path, "ios");
+      var name = project.app.file;
+      var outputDirectory = '$targetDirectory/$name/';
+ 
+
+      project.sources = PathHelper.relocatePaths(project.sources, PathHelper.combine(project.app.path, "ios/build"));
 
       if (project.targetFlags.exists("xml")) 
       {
@@ -51,9 +107,8 @@ class IOSPlatform implements IPlatformTool
 
       var context = project.templateContext;
 
-      context.HAS_ICON = false;
-      context.HAS_LAUNCH_IMAGE = false;
       context.OBJC_ARC = false;
+      context.COMPONENT = component;
 
       context.linkedLibraries = [];
 
@@ -65,15 +120,15 @@ class IOSPlatform implements IPlatformTool
          }
       }
 
-     
-      var valid_archs = new Array<String>();
+      
+      valid_archs = new Array<String>();
       var armv6 = false;
       var armv7 = false;
       var architectures = project.architectures;
 
       if (architectures == null || architectures.length == 0) 
       {
-         architectures = [ Architecture.ARMV7 ];
+         architectures = [ Architecture.ARMV7, Architecture.ARMV7 ];
       }
 
       if (project.config.ios.device == IOSConfigDevice.UNIVERSAL || project.config.ios.device == IOSConfigDevice.IPHONE) 
@@ -98,19 +153,39 @@ class IOSPlatform implements IPlatformTool
 
       valid_archs.push("i386");
 
-      context.VALID_ARCHS = valid_archs.join(" ");
-      context.THUMB_SUPPORT = armv6 ? "GCC_THUMB_SUPPORT = NO;" : "";
+      var libExts = [ ".iphoneos.a", ".iphoneos-v7.a", ".iphonesim.a" ];
 
-      var requiredCapabilities = [];
+      var libExts = new Array<String>();
+      if (armv6) libExts.push(".iphoneos.a");
+      if (armv7) libExts.push(".iphoneos-v7.a");
+      libExts.push(".iphonesim.a");
 
-      if (armv7 && !armv6) 
+      var appLibs = new Array<String>();
+      for(ext in libExts)
+         appLibs.push("cpp/ApplicationMain" + ext);
+
+      for(ndll in project.ndlls) 
       {
-         requiredCapabilities.push( { name: "armv7", value: true } );
+         if (ndll.haxelib != null) 
+         {
+            for(ext in libExts)
+            {
+               var releaseLib = PathHelper.getLibraryPath(ndll, "iPhone", "lib", ext);
+               appLibs.push(releaseLib);
+            }
+         }
       }
 
-      context.REQUIRED_CAPABILITY = requiredCapabilities;
+   
+      var buildDir = PathHelper.combine(project.app.path, "ios/build");
+      context.VALID_ARCHS = valid_archs.join(" ");
+      context.APP_LIBS = appLibs.join(" ");
+      context.THUMB_SUPPORT = armv6 ? "GCC_THUMB_SUPPORT = NO;" : "";
+      //context.DEST_PATH = PathHelper.relocatePath('$outputDirectory/Versions/A/$name', buildDir);
+      context.DEST_PATH = PathHelper.relocatePath('$outputDirectory/lib$name.a', buildDir);
       context.ARMV6 = armv6;
       context.ARMV7 = armv7;
+      context.CLASS_NAME = name;
       context.TARGET_DEVICES = switch(project.config.ios.device) { case UNIVERSAL: "1,2"; case IPHONE : "1"; case IPAD : "2"; }
       context.DEPLOYMENT = project.config.ios.deployment;
 
@@ -122,50 +197,12 @@ class IOSPlatform implements IPlatformTool
       context.IOS_COMPILER = project.config.ios.compiler;
       context.IOS_LINKER_FLAGS = project.config.ios.linkerFlags.split(" ").join(", ");
 
-      switch(project.window.orientation) 
-      {
-         case PORTRAIT:
-            context.IOS_APP_ORIENTATION = "<array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationPortraitUpsideDown</string></array>";
-         case LANDSCAPE:
-            context.IOS_APP_ORIENTATION = "<array><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>";
-         case ALL:
-            context.IOS_APP_ORIENTATION = "<array><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationPortraitUpsideDown</string></array>";
-         //case "allButUpsideDown":
-            //context.IOS_APP_ORIENTATION = "<array><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string><string>UIInterfaceOrientationPortrait</string></array>";
-         default:
-            context.IOS_APP_ORIENTATION = "<array><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationPortraitUpsideDown</string></array>";
-      }
-
-      context.ADDL_PBX_BUILD_FILE = "";
-      context.ADDL_PBX_FILE_REFERENCE = "";
-      context.ADDL_PBX_FRAMEWORKS_BUILD_PHASE = "";
-      context.ADDL_PBX_FRAMEWORK_GROUP = "";
-
-      for(dependency in project.dependencies) 
-      {
-         if (Path.extension(dependency) == "framework") 
-         {
-            var frameworkID = "11C0000000000018" + StringHelper.getUniqueID();
-            var fileID = "11C0000000000018" + StringHelper.getUniqueID();
-
-            context.ADDL_PBX_BUILD_FILE += "      " + frameworkID + " /* " + dependency + " in Frameworks */ = {isa = PBXBuildFile; fileRef = " + fileID + " /* " + dependency + " */; };\n";
-            context.ADDL_PBX_FILE_REFERENCE += "      " + fileID + " /* " + dependency + " */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = " + dependency + "; path = System/Library/Frameworks/" + dependency + "; sourceTree = SDKROOT; };\n";
-            context.ADDL_PBX_FRAMEWORKS_BUILD_PHASE += "            " + frameworkID + " /* " + dependency + " in Frameworks */,\n";
-            context.ADDL_PBX_FRAMEWORK_GROUP += "            " + fileID + " /* " + dependency + " */,\n";
-         }
-      }
-
-      context.HXML_PATH = PathHelper.findTemplate(project.templatePaths, "ios/PROJ/haxe/Build.hxml");
-      context.PRERENDERED_ICON = project.config.ios.prerenderedIcon;
-
-      /*var assets = new Array<Asset>();
+      var resourceCommand = new Array<String>();
       for(asset in project.assets) 
       {
-         var newAsset = asset.clone();
-
-         assets.push();
-
-      }*/
+          resourceCommand.push( "\n-resource " +  PathHelper.relocatePath(asset.sourcePath,buildDir) + "@" + asset.flatName );
+      }
+      context.RESOURCES = resourceCommand.join("");
 
       //updateIcon();
       //updateLaunchImage();
@@ -174,26 +211,24 @@ class IOSPlatform implements IPlatformTool
 
    public function run(project:NMEProject, arguments:Array<String>):Void 
    {
+      #if false
       IOSHelper.launch(project, PathHelper.combine(project.app.path, "ios"));
+      #end
    }
 
    public function update(project:NMEProject):Void 
    {
+      #if false
       project = project.clone();
 
       var nmeLib = new Haxelib("nme");
 
-      //project.ndlls.push(new NDLL("curl_ssl", nmeLib, false));
-      //project.ndlls.push(new NDLL("png", nmeLib, false));
-      //project.ndlls.push(new NDLL("jpeg", nmeLib, false));
-      //project.ndlls.push(new NDLL("freetype", nmeLib, false));
-
       for(asset in project.assets) 
-      {
          asset.resourceName = asset.flatName;
-      }
 
       var context = generateContext(project);
+
+      trace(valid_archs);
 
       var targetDirectory = PathHelper.combine(project.app.path, "ios");
       var projectDirectory = targetDirectory + "/" + project.app.file + "/";
@@ -203,32 +238,8 @@ class IOSPlatform implements IPlatformTool
       PathHelper.mkdir(projectDirectory + "/haxe");
       PathHelper.mkdir(projectDirectory + "/haxe/nme/installer");
 
-      var iconNames = [ "Icon.png", "Icon@2x.png", "Icon-72.png", "Icon-72@2x.png" ];
-      var iconSizes = [ 57, 114, 72, 144 ];
-
-      context.HAS_ICON = true;
-
-      for(i in 0...iconNames.length) 
-      {
-         if (!IconHelper.createIcon(project.icons, iconSizes[i], iconSizes[i], PathHelper.combine(projectDirectory, iconNames[i]))) 
-         {
-            context.HAS_ICON = false;
-         }
-      }
-
-      for(splashScreen in project.splashScreens) 
-      {
-         FileHelper.copyFile(splashScreen.path, PathHelper.combine(projectDirectory, Path.withoutDirectory(splashScreen.path)));
-         context.HAS_LAUNCH_IMAGE = true;
-      }
 
       FileHelper.copyFileTemplate(project.templatePaths, "haxe/nme/AssetData.hx", projectDirectory + "/haxe/nme/AssetData.hx", context);
-      FileHelper.recursiveCopyTemplate(project.templatePaths, "ios/PROJ/haxe", projectDirectory + "/haxe", context);
-      FileHelper.recursiveCopyTemplate(project.templatePaths, "ios/PROJ/Classes", projectDirectory + "/Classes", context);
-      FileHelper.copyFileTemplate(project.templatePaths, "ios/PROJ/PROJ-Entitlements.plist", projectDirectory + "/" + project.app.file + "-Entitlements.plist", context);
-      FileHelper.copyFileTemplate(project.templatePaths, "ios/PROJ/PROJ-Info.plist", projectDirectory + "/" + project.app.file + "-Info.plist", context);
-      FileHelper.copyFileTemplate(project.templatePaths, "ios/PROJ/PROJ-Prefix.pch", projectDirectory + "/" + project.app.file + "-Prefix.pch", context);
-      FileHelper.recursiveCopyTemplate(project.templatePaths, "ios/PROJ.xcodeproj", targetDirectory + "/" + project.app.file + ".xcodeproj", context);
 
       //SWFHelper.generateSWFClasses(project, projectDirectory + "/haxe");
       PathHelper.mkdir(projectDirectory + "/lib");
@@ -292,27 +303,10 @@ class IOSPlatform implements IPlatformTool
         {
             ProcessHelper.runCommand("", "open", [ targetDirectory + "/" + project.app.file + ".xcodeproj" ] );
         }
+     #end
    }
 
-   /*private function updateLaunchImage() {
-      var destination = buildDirectory + "/ios";
-      PathHelper.mkdir(destination);
 
-      var has_launch_image = false;
-      if (launchImages.length > 0) has_launch_image = true;
-
-      for(launchImage in launchImages) 
-      {
-         var splitPath = launchImage.name.split("/");
-         var path = destination + "/" + splitPath[splitPath.length - 1];
-         FileHelper.copyFile(launchImage.name, path, context, false);
-      }
-
-      context.HAS_LAUNCH_IMAGE = has_launch_image;
-
-   }*/
-
-   public function new() {}
    @ignore public function install(project:NMEProject):Void {}
    @ignore public function trace(project:NMEProject):Void {}
    @ignore public function uninstall(project:NMEProject):Void {}

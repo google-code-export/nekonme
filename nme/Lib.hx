@@ -85,7 +85,7 @@ class Lib
 
          Lib.nmeStage =
             stageClass==null ? new Stage(stage_handle, inWidth, inHeight) :
-             Type.createInstance (stageClass, [stage_handle, inWidth, inHeight]);
+             Type.createInstance(stageClass, [stage_handle, inWidth, inHeight]);
 
          Lib.nmeStage.frameRate = inFrameRate;
          Lib.nmeStage.opaqueBackground = inColour;

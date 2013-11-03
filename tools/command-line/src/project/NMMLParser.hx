@@ -69,13 +69,12 @@ class NMMLParser extends NMEProject
       }
 
       if (targetFlags.exists("cpp")) 
-      {
          localDefines.set("cpp", "1");
-
-      } else if (targetFlags.exists("neko")) 
-      {
+      else if (targetFlags.exists("neko")) 
          localDefines.set("neko", "1");
-      }
+
+      if (target==IOSVIEW)
+         localDefines.set("ios", "1");
 
       localDefines.set("haxe3", "1");
 
@@ -689,6 +688,12 @@ class NMMLParser extends NMEProject
 
                   parseAppElement(element);
 
+               case "component":
+                  if (!element.has.name) 
+                     LogHelper.error("Component required name element");
+                  else
+                     component =  substitute(element.att.name);
+
                case "java":
 
                   javaPaths.push(PathHelper.combine(extensionPath, substitute(element.att.path)));
@@ -1035,7 +1040,7 @@ class NMMLParser extends NMEProject
 
                case "ios":
 
-                  if (target == Platform.IOS) 
+                  if (target == Platform.IOS || target == Platform.IOSVIEW ) 
                   {
                      if (element.has.deployment) 
                      {

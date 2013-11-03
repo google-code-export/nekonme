@@ -9,6 +9,7 @@ import platforms.BlackBerryPlatform;
 import platforms.FlashPlatform;
 import platforms.HTML5Platform;
 import platforms.IOSPlatform;
+import platforms.IOSView;
 import platforms.IPlatformTool;
 import platforms.LinuxPlatform;
 import platforms.MacPlatform;
@@ -52,84 +53,76 @@ class CommandLineTools
       switch(project.target) 
       {
          case ANDROID:
-
             platform = new AndroidPlatform();
 
          case BLACKBERRY:
-
             platform = new BlackBerryPlatform();
 
-         case IOS:
+         case IOSVIEW:
+            platform = new IOSView(project.getComponent());
 
+         case IOS:
             platform = new IOSPlatform();
 
          case WEBOS:
-
             platform = new WebOSPlatform();
 
          case WINDOWS:
-
             platform = new WindowsPlatform();
 
          case MAC:
-
             platform = new MacPlatform();
 
          case LINUX:
-
             platform = new LinuxPlatform();
 
          case FLASH:
-
             platform = new FlashPlatform();
 
          case HTML5:
-
             platform = new HTML5Platform();
       }
-
-      var metaFields = Meta.getFields(Type.getClass(platform));
 
       if (platform != null) 
       {
          var command = project.command.toLowerCase();
 
-         if (!Reflect.hasField(metaFields.display, "ignore") && (command == "display")) 
+         if (command == "display") 
          {
             platform.display(project);
          }
 
-         if (!Reflect.hasField(metaFields.clean, "ignore") && (command == "clean" || targetFlags.exists("clean"))) 
+         if (command == "clean" || targetFlags.exists("clean")) 
          {
             LogHelper.info("", "\nRunning command: CLEAN");
             platform.clean(project);
          }
 
-         if (!Reflect.hasField(metaFields.update, "ignore") && (command == "update" || command == "build" || command == "test")) 
+         if (command == "update" || command == "build" || command == "test") 
          {
             LogHelper.info("", "\nRunning command: UPDATE");
             platform.update(project);
          }
 
-         if (!Reflect.hasField(metaFields.build, "ignore") && (command == "build" || command == "test")) 
+         if (command == "build" || command == "test") 
          {
             LogHelper.info("", "\nRunning command: BUILD");
             platform.build(project);
          }
 
-         if (!Reflect.hasField(metaFields.install, "ignore") && (command == "install" || command == "run" || command == "test")) 
+         if (command == "install" || command == "run" || command == "test") 
          {
             LogHelper.info("", "\nRunning command: INSTALL");
             platform.install(project);
          }
 
-         if (!Reflect.hasField(metaFields.run, "ignore") && (command == "run" || command == "rerun" || command == "test")) 
+         if (command == "run" || command == "rerun" || command == "test") 
          {
             LogHelper.info("", "\nRunning command: RUN");
             platform.run(project, additionalArguments);
          }
 
-         if (!Reflect.hasField(metaFields.trace, "ignore") && (command == "test" || command == "trace")) 
+         if (command == "test" || command == "trace") 
          {
             if (traceEnabled || command == "trace") 
             {
@@ -600,8 +593,12 @@ class CommandLineTools
             targetFlags.set("neko", "");
 
          case "iphone", "iphoneos":
-
             target = Platform.IOS;
+
+         case "iosview":
+            targetFlags.set("ios", "");
+            targetFlags.set("iosview", "");
+            target = Platform.IOSVIEW;
 
          case "iphonesim":
 
@@ -797,7 +794,7 @@ class CommandLineTools
       // Better way to do this?
       switch(project.target) 
       {
-         case ANDROID, IOS, BLACKBERRY:
+         case ANDROID, IOS, BLACKBERRY, IOSVIEW:
 
             getBuildNumber(project);
 
