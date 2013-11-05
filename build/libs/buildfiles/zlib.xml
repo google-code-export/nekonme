@@ -19,7 +19,7 @@
 
 
 
-<target id="default" output="${LIBPREFIX}zlib${DBG}${LIBEXTRA}" tool="linker" toolid="static_link">
+<target id="default" output="${LIBPREFIX}z${DBG}${LIBEXTRA}" tool="linker" toolid="static_link">
   <files id="zlib"/>
   <outdir name="../../bin/${BINDIR}"/>
 </target>
