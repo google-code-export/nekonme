@@ -16,7 +16,7 @@ class NetStream extends nme.events.EventDispatcher
    var nmeReceiveAudio:Bool;
    var nmeReceiveVideo:Bool;
 
-	function new(inConnection : NetConnection, ?peerID : String) : Void
+	function new(?inConnection : NetConnection, ?peerID : String) : Void
    {
       super();
       nmeConnection = inConnection;

@@ -5,6 +5,19 @@ import nme.Assets;
 import wx.Assets;
 #end
 
+
+#if nme
+class ApplicationDocument extends ::APP_MAIN::
+{
+   public function new()
+   {
+      super();
+		nme.Lib.current.addChild(this);
+   }
+   override public function get_stage() : nme.display.Stage { return nme.Lib.current.stage; }
+}
+#end
+
 class ApplicationMain
 {
 
@@ -73,11 +86,10 @@ class ApplicationMain
 				}
 				else
 				{
-					var instance = Type.createInstance(::APP_MAIN::, []);
 					#if nme
-					if (Std.is (instance, nme.display.DisplayObject)) {
-						nme.Lib.current.addChild(cast instance);
-					}
+               new ApplicationDocument();
+               #else
+					Type.createInstance(::APP_MAIN::, []);
 					#end
 				}
 			},
@@ -132,7 +144,3 @@ class ApplicationMain
 	
 }
 
-
-#if haxe_211
-typedef Hash<T> = haxe.ds.StringMap<T>;
-#end

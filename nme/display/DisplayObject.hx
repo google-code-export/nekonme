@@ -13,14 +13,8 @@ import nme.geom.Point;
 import nme.filters.BitmapFilter;
 import nme.Loader;
 
-#if haxe3
 class DisplayObject extends EventDispatcher implements IBitmapDrawable 
 {
-#else
-class DisplayObject extends EventDispatcher, implements IBitmapDrawable 
-{
-#end
-
    public var alpha(get_alpha, set_alpha):Float;
    public var blendMode(get_blendMode, set_blendMode):BlendMode;
    public var cacheAsBitmap(get_cacheAsBitmap, set_cacheAsBitmap):Bool;
