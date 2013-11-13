@@ -9,15 +9,6 @@ import nme.utils.ByteArray;
 
 import nme.AssetData;
 
-enum AssetType 
-{
-   BINARY;
-   FONT;
-   IMAGE;
-   MUSIC;
-   SOUND;
-   TEXT;
-}
 
 /**
  * <p>The Assets class provides a cross-platform interface to access 

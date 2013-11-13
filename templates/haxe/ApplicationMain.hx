@@ -1,4 +1,9 @@
+// Might have waxe without NME
+#if nme
 import nme.Assets;
+#elseif waxe
+import wx.Assets;
+#end
 
 class ApplicationMain
 {
@@ -24,7 +29,7 @@ class ApplicationMain
 		wx.App.boot(function()
 		{
 			::if (APP_FRAME != null)::
-			frame = wx.::APP_FRAME::.create(null, null, "::APP_TITLE::", null, { width: ::WIN_WIDTH::, height: ::WIN_HEIGHT:: });
+			frame = wx.::APP_FRAME:bin/windows/cpp/haxe/ApplicationMain.hx:.create(null, null, "::APP_TITLE::", null, { width: ::WIN_WIDTH::, height: ::WIN_HEIGHT:: });
 			::else::
 			frame = wx.Frame.create(null, null, "::APP_TITLE::", null, { width: ::WIN_WIDTH::, height: ::WIN_HEIGHT:: });
 			::end::
@@ -105,10 +110,10 @@ class ApplicationMain
       if (types.exists(inName))
          switch(types.get(inName))
          {
- 	         case BINARY, TEXT: return Assets.getBytes(inName);
-	         case FONT: return Assets.getFont(inName);
-	         case IMAGE: return Assets.getBitmapData(inName,false);
-	         case MUSIC, SOUND: return Assets.getSound(inName);
+            case BINARY, TEXT: return Assets.getBytes(inName);
+            case FONT: return Assets.getFont(inName);
+            case IMAGE: return Assets.getBitmapData(inName);
+            case MUSIC, SOUND: return Assets.getSound(inName);
          }
 
       throw "Asset does not exist: " + inName;
