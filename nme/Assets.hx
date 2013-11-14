@@ -48,7 +48,11 @@ class Assets
       var bytes = haxe.Resource.getBytes(inName);
       if (bytes==null)
          return null;
+      #if flash
+      return bytes.getData();
+      #else
       return ByteArray.fromBytes(bytes);
+      #end
    }
 
    /**

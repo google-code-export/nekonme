@@ -1,5 +1,7 @@
 package nme.net;
 
+#if (cpp||neko)
+
 class NetStream extends nme.events.EventDispatcher
 {
 	inline static var CONNECT_TO_FMS : String = "connectToFMS";
@@ -79,5 +81,9 @@ class NetStream extends nme.events.EventDispatcher
    //public function publish(?name : String, ?type : String) : Void { }
 	//function send(handlerName : String, ?p1 : Dynamic, ?p2 : Dynamic, ?p3 : Dynamic, ?p4 : Dynamic, ?p5 : Dynamic) : Void
 }
+
+#else
+typedef NetStream = flash.net.NetStream;
+#end
 
 

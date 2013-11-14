@@ -4,6 +4,18 @@ package nme;
 import nme.Assets;
 
 
+enum AssetType 
+{
+   BINARY;
+   FONT;
+   IMAGE;
+   MUSIC;
+   SOUND;
+   TEXT;
+}
+
+
+
 class AssetData
 {
 	public static var className = new Map<String,Dynamic>();

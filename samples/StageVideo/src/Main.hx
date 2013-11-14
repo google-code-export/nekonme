@@ -1,7 +1,10 @@
 import nme.display.Sprite;
 import nme.net.NetStream;
+import nme.net.NetConnection;
 import nme.events.StageVideoEvent;
 
+import flash.events.AsyncErrorEvent;
+import flash.events.NetStatusEvent;
 
 /*
 The following steps summarize how to use a StageVideo object to play a video:
@@ -19,20 +22,64 @@ class Main extends Sprite
       super();
 
       // In flash, we must wait for StageVideoAvailabilityEvent.STAGE_VIDEO_AVAILABILITY
-      if (stage.stageVideo.length<1)
+      if (stage.stageVideos.length<1)
       {
          trace("No video available");
       }
       else
       {
-          var stream = new NetStream(); 
-          //stream.addEventListener(NetStatusEvent.NET_STATUS,netStatusHandler); 
-          //stream.addEventListener(AsyncErrorEvent.ASYNC_ERROR, asyncErrorHandler); A
+          trace("Loading...");
+          var video = stage.stageVideos[0];
+
+          var nc = new NetConnection(); 
+          nc.connect(null);
+          nc.addEventListener(NetStatusEvent.NET_STATUS,netStatusHandler); 
+
+          var stream = new NetStream(nc);
+          var client:Dynamic = {};
+          client.onMetaData = function(item:Dynamic)
+          {
+             trace("metaData " + item.width + "," + item.height);
+             // Center video instance on Stage.
+             video.viewPort = new nme.geom.Rectangle(
+                (stage.stageWidth - item.width) / 2,
+                (stage.stageHeight - item.height) / 2,
+                item.width,
+                item.height );
+          };
+          client.onPlayStatus = function(item:Dynamic)
+          {
+             trace("onPlayStatus " + item);
+          };
+          stream.client = client;
+
+          stream.addEventListener(AsyncErrorEvent.ASYNC_ERROR, asyncErrorHandler);
  
-          var video = stage.stageVideo[0];
-          video.attachNetStream(stream);
+          video.viewPort = new nme.geom.Rectangle(0,0,500,500);
           video.addEventListener(StageVideoEvent.RENDER_STATE, onRenderState);
-          stream.play("http://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4");
+          video.attachNetStream(stream);
+          stream.play("http://download.wavetlan.com/SVV/Media/HTTP/H264/Talkinghead_Media/H264_test1_Talkinghead_mp4_480x360.mp4");
+
+          // Seems flash needs this?
+          addEventListener(nme.events.Event.ENTER_FRAME, function(_) { stream.bytesLoaded; } );
+      }
+   }
+
+   function asyncErrorHandler(event:AsyncErrorEvent):Void 
+   { 
+      trace("asyncErrorHandler " + event);
+   } 
+   
+   function netStatusHandler(event:NetStatusEvent):Void
+   {
+      trace("Net status " + event.info );
+      switch (event.info.code)
+      {
+         case "NetConnection.Connect.Success":
+            trace("You've connected successfully");
+             
+         case "NetStream.Publish.BadName":
+            trace("Please check the name of the publishing stream" );
       }
    }
 

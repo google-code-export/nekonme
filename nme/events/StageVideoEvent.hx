@@ -1,5 +1,7 @@
 package nme.events;
 
+#if (cpp||neko)
+
 class StageVideoEvent extends Event
 {
 	public static inline var RENDER_STATE = "renderState";
@@ -17,3 +19,7 @@ class StageVideoEvent extends Event
       status = inStatus;
    }
 }
+
+#else
+typedef StageVideoEvent = flash.events.StageVideoEvent;
+#end

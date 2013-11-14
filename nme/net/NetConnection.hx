@@ -1,5 +1,7 @@
 package nme.net;
 
+#if (cpp||neko)
+
 class NetConnection extends nme.events.EventDispatcher
 {
 	public static inline var defaultObjectEncoding : Int = 0;
@@ -33,3 +35,7 @@ class NetConnection extends nme.events.EventDispatcher
 	//function addHeader(operation : String, mustUnderstand : Bool = false, ?param : nme.utils.Object) : Void;
 	//function call(command : String, responder : Responder, ?p1 : Dynamic, ?p2 : Dynamic, ?p3 : Dynamic, ?p4 : Dynamic, ?p5 : Dynamic) : Void;
 }
+
+#else
+typedef NetConnection = flash.net.NetConnection;
+#end
