@@ -43,6 +43,7 @@ class NMEProject
    public var templatePaths:Array<String>;
    public var window:Window;
    public var component:String;
+   public var embedAssets:Bool;
 
    private var baseTemplateContext:Dynamic;
 
@@ -86,6 +87,7 @@ class NMEProject
 
       baseTemplateContext = {};
       component = null;
+      embedAssets = false;
       command = _command;
       config = new PlatformConfig();
       debug = _debug;
@@ -118,6 +120,8 @@ class NMEProject
             if (target == Platform.IOS || target==IOSVIEW) 
             {
                architectures = [ Architecture.ARMV7 ];
+               if (target==IOSVIEW) 
+                  embedAssets = true;
             }
             else
             {
@@ -165,6 +169,16 @@ class NMEProject
       splashScreens = new Array<SplashScreen>();
    }
 
+   public function isWaxe()
+   {
+      for(ndll in ndlls)
+      {
+         if (ndll.name=="waxe")
+            return true;
+      }
+      return false;
+   }
+
    public function clone():NMEProject 
    {
       var project = new NMEProject();
@@ -188,6 +202,7 @@ class NMEProject
       project.debug = debug;
       project.dependencies = dependencies.copy();
       project.component = component;
+      project.embedAssets = embedAssets;
 
       for(key in environment.keys()) 
       {
@@ -400,6 +415,8 @@ class NMEProject
          ObjectHelper.copyUniqueFields(project.certificate, certificate, null);
          config.merge(project.config);
 
+         if (project.embedAssets)
+            embedAssets = true;
          if (component==null) component = project.component;
          assets = ArrayHelper.concatUnique(assets, project.assets);
          dependencies = ArrayHelper.concatUnique(dependencies, project.dependencies);
@@ -466,6 +483,7 @@ class NMEProject
       }
 
       context.BUILD_DIR = app.path;
+      context.EMBED_ASSETS = embedAssets ? "true" : "false";
 
       for(field in Reflect.fields(meta)) 
       {
@@ -492,7 +510,13 @@ class NMEProject
 
       for(asset in assets) 
       {
-         if (asset.type != AssetType.TEMPLATE) 
+         if (embedAssets)
+         {
+            var absPath = sys.FileSystem.fullPath(asset.sourcePath);
+            haxeflags.push("-resource " + absPath  + "@" + asset.id );
+            context.assets.push(asset);
+         }
+         else if (asset.type != AssetType.TEMPLATE) 
          {
             var embeddedAsset:Dynamic = { };
             ObjectHelper.copyFields(asset, embeddedAsset);

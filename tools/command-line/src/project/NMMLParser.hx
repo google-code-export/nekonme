@@ -519,6 +519,13 @@ class NMMLParser extends NMEProject
       }
    }
 
+   function parseBool(inVal:String,inDefault=false) : Bool
+   {
+      if (inVal==null || inVal=="")
+         return inDefault;
+      return inVal.substr(0,1)=="1" || inVal.substr(0,1)=='t';
+   }
+
    private function parseMetaElement(element:Fast):Void 
    {
       for(attribute in element.x.attributes()) 
@@ -780,6 +787,9 @@ class NMMLParser extends NMEProject
                   var ndll = new NDLL(name, haxelib,register);
                   ndll.extensionPath = extensionPath;
                   ndlls.push(ndll);
+
+               case "embedAssets":
+                  embedAssets = parseBool(substitute(element.att.value));
 
                case "launchImage":
 

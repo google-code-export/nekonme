@@ -89,7 +89,14 @@ class MacPlatform implements IPlatformTool
       if (project.target == PlatformHelper.hostPlatform) 
       {
          initialize(project);
-         ProcessHelper.runCommand(executableDirectory, "./" + Path.withoutDirectory(executablePath), arguments);
+         if (project.isWaxe())
+         {
+            ProcessHelper.runCommand("", "open", [applicationDirectory] );
+         }
+         else
+         {
+            ProcessHelper.runCommand(executableDirectory, "./" + Path.withoutDirectory(executablePath), arguments);
+         }
       }
    }
 

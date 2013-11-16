@@ -8,6 +8,7 @@ class NetStream extends nme.events.EventDispatcher
 	inline static var DIRECT_CONNECTIONS : String ="directConnections";
 
 	public var bytesTotal(get_bytesTotal,null) : Int;
+	public var bytesLoaded(get_bytesLoaded,null) : Int;
 	public var decodedFrames(get_decodedFrames,null) : Int;
    public var client:Dynamic;
 	public var objectEncoding(default,null) : Int;
@@ -69,6 +70,7 @@ class NetStream extends nme.events.EventDispatcher
 	public function onPeerConnect(subscriber : NetStream) : Bool { return true; }
 
    function get_bytesTotal() { return 0; }
+   function get_bytesLoaded() { return 0; }
    function get_decodedFrames() { return 0; }
    function get_peerStreams() { return new Array<Dynamic>(); }
 

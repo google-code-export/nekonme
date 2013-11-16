@@ -16,6 +16,7 @@
 		1EEEBAB5121AF2880048A9DF /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1EEEBAB4121AF2880048A9DF /* CoreGraphics.framework */; };
 		1EEEBAFC121BE2980048A9DF /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1EEEBAFB121BE2980048A9DF /* AudioToolbox.framework */; };
 		1EEEBAFE121BE2980048A9DF /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1EEEBAFD121BE2980048A9DF /* AVFoundation.framework */; };
+		1EEEBAFE121BE2A80048A9DF /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1EEEBAFD121BE2A80048A9DF /* CoreMotion.framework */; };
 		1EEEBB00121BE2B30048A9DF /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1EEEBAFF121BE2B30048A9DF /* Foundation.framework */; };
 		::if (HAS_ICON)::
 		1EF0A83A000000001C000001 /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = 1EF0A83900000001C0000001 /* Icon.png */; };
@@ -58,6 +59,7 @@
 		1EEEBAB4121AF2880048A9DF /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		1EEEBAFB121BE2980048A9DF /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
 		1EEEBAFD121BE2980048A9DF /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		1EEEBAFD121BE2A80048A9DF /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
 		1EEEBAFF121BE2B30048A9DF /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		::if (HAS_ICON)::
         1EF0A83900000001C0000001 = {isa = PBXFileReference; lastKnownFileType = image.png; path = "::APP_FILE::/Icon.png"; sourceTree = SOURCE_ROOT; };
@@ -96,6 +98,7 @@
 				1EEEBAB5121AF2880048A9DF /* CoreGraphics.framework in Frameworks */,
 				1EEEBAFC121BE2980048A9DF /* AudioToolbox.framework in Frameworks */,
 				1EEEBAFE121BE2980048A9DF /* AVFoundation.framework in Frameworks */,
+				1EEEBAFE121BE2A80048A9DF /* CoreMotion.framework in Frameworks */,
 				1EEEBB00121BE2B30048A9DF /* Foundation.framework in Frameworks */,
 				::ADDL_PBX_FRAMEWORKS_BUILD_PHASE::
 			);
@@ -132,6 +135,7 @@
 				1EEEBAFF121BE2B30048A9DF /* Foundation.framework */,
 				1EEEBAFB121BE2980048A9DF /* AudioToolbox.framework */,
 				1EEEBAFD121BE2980048A9DF /* AVFoundation.framework */,
+				1EEEBAFD121BE2A80048A9DF /* CoreMotion.framework */,
 				::ADDL_PBX_FRAMEWORK_GROUP::
 			);
 			name = Frameworks;

@@ -6,15 +6,18 @@ import wx.Assets;
 #end
 
 
-#if nme
+#if (nme && !waxe)
 class ApplicationDocument extends ::APP_MAIN::
 {
    public function new()
    {
+      if (Std.is(this, nme.display.DisplayObject))
+      {
+		   nme.Lib.current.addChild(cast this);
+      }
+      
       super();
-		nme.Lib.current.addChild(this);
    }
-   override public function get_stage() : nme.display.Stage { return nme.Lib.current.stage; }
 }
 #end
 
@@ -37,30 +40,46 @@ class ApplicationMain
 		nme.net.URLLoader.initialize(nme.installer.Assets.getResourceName("::sslCaCert::"));
 		::end::
 		#end
-		
-		#if waxe
-		wx.App.boot(function()
+	
+		var hasMain = false;
+		for (methodName in Type.getClassFields(::APP_MAIN::))
 		{
-			::if (APP_FRAME != null)::
-			frame = wx.::APP_FRAME:bin/windows/cpp/haxe/ApplicationMain.hx:.create(null, null, "::APP_TITLE::", null, { width: ::WIN_WIDTH::, height: ::WIN_HEIGHT:: });
-			::else::
-			frame = wx.Frame.create(null, null, "::APP_TITLE::", null, { width: ::WIN_WIDTH::, height: ::WIN_HEIGHT:: });
-			::end::
-			#if nme
-			var stage = wx.NMEStage.create(frame, null, null, { width: ::WIN_WIDTH::, height: ::WIN_HEIGHT:: });
-			#end
-			
-			::APP_MAIN::.main();
-			
-			if (autoShowFrame)
+			if (methodName == "main")
 			{
-				wx.App.setTopWindow(frame);
-				frame.shown = true;
+				hasMain = true;
+				break;
 			}
-		});
-		#else
+		}
+
+	
+		#if waxe
+		if (hasMain)
+		{
+			Reflect.callMethod (::APP_MAIN::, Reflect.field (::APP_MAIN::, "main"), []);
+		}
+      else
+   		wx.App.boot(function()
+   		{
+   			::if (APP_FRAME != null)::
+   			frame = wx.::APP_FRAME::.create(null, null, "::APP_TITLE::", null, { width: ::WIN_WIDTH::, height: ::WIN_HEIGHT:: });
+   			::else::
+   			frame = wx.Frame.create(null, null, "::APP_TITLE::", null, { width: ::WIN_WIDTH::, height: ::WIN_HEIGHT:: });
+   			::end::
+   			#if nme
+   			var stage = wx.NMEStage.create(frame, null, null, { width: ::WIN_WIDTH::, height: ::WIN_HEIGHT:: });
+   			#end
+   			
+				Type.createInstance(::APP_MAIN::, []);
+   			
+   			if (autoShowFrame)
+   			{
+   				wx.App.setTopWindow(frame);
+   				frame.shown = true;
+   			}
+   		});
+   		#else
 		
-		nme.Lib.create(function()
+		   nme.Lib.create(function()
 			{ 
 				//if ((::WIN_WIDTH:: == 0 && ::WIN_HEIGHT:: == 0) || ::WIN_FULLSCREEN::)
 				//{
@@ -69,16 +88,6 @@ class ApplicationMain
 					nme.Lib.current.loaderInfo = nme.display.LoaderInfo.create (null);
 				//}
 				
-				var hasMain = false;
-				
-				for (methodName in Type.getClassFields(::APP_MAIN::))
-				{
-					if (methodName == "main")
-					{
-						hasMain = true;
-						break;
-					}
-				}
 				
 				if (hasMain)
 				{
@@ -86,7 +95,7 @@ class ApplicationMain
 				}
 				else
 				{
-					#if nme
+					#if (nme && !waxe)
                new ApplicationDocument();
                #else
 					Type.createInstance(::APP_MAIN::, []);

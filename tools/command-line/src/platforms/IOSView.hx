@@ -23,22 +23,11 @@ class IOSView implements IPlatformTool
 
       var nmeLib = new Haxelib("nme");
 
-      for(asset in project.assets) 
-      {
-         asset.resourceName = asset.flatName;
-      }
-
-
       var targetDirectory = PathHelper.combine(project.app.path, "ios");
       var name = project.app.file;
       //var outputDirectory = '$targetDirectory/$name.framework/';
       var outputDirectory = '$targetDirectory/$name/';
       var buildDir = targetDirectory + "/build/";
-
-
-      for(asset in project.assets) 
-         asset.resourceName = asset.flatName;
-
 
       PathHelper.mkdir(targetDirectory);
       PathHelper.mkdir(outputDirectory);
@@ -54,6 +43,7 @@ class IOSView implements IPlatformTool
       PathHelper.mkdir(buildDir);
       PathHelper.mkdir(buildDir + "/cpp");
 
+      FileHelper.copyFileTemplate(project.templatePaths, "haxe/nme/AssetData.hx", buildDir + "/nme/AssetData.hx", context);
       FileHelper.copyFileTemplate(project.templatePaths, "ios-view/FrameworkInterface.mm", buildDir+"/cpp/FrameworkInterface.mm", context);
       //FileHelper.copyFileTemplate(project.templatePaths, "ios-view/Info.plist", outputDirectory+"/Versions/A/Resources/Info.plist", context);
       FileHelper.recursiveCopyTemplate(project.templatePaths, "ios-view/build", buildDir, context);

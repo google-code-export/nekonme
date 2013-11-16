@@ -63,7 +63,7 @@ class Stage extends DisplayObjectContainer
    #if stage3d
    public var stage3Ds:Vector<Stage3D>;
    #end
-   public var stageVideo:Vector<StageVideo>;
+   public var stageVideos:Vector<StageVideo>;
 
    private static var efLeftDown = 0x0001;
    private static var efShiftDown = 0x0002;
@@ -119,8 +119,8 @@ class Stage extends DisplayObjectContainer
       stage3Ds = new Vector();
       stage3Ds.push(new Stage3D());
       #end
-      stageVideo = new Vector<StageVideo>(1);
-      stageVideo[0] = new StageVideo();
+      stageVideos = new Vector<StageVideo>(1);
+      stageVideos[0] = new StageVideo();
    }
 
    public static dynamic function getOrientation():Int 

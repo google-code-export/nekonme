@@ -31,6 +31,8 @@
 
   <haxedef name="network-sandbox" if="flash"/>
 
-
+  <assets path="assets">
+    <image name="buttons.png" id="buttons" />
+  </assets>
   
 </project>

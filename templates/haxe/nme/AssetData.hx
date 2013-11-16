@@ -1,22 +1,13 @@
 package nme;
 
-enum AssetType 
-{
-   BINARY;
-   FONT;
-   IMAGE;
-   MUSIC;
-   SOUND;
-   TEXT;
-}
-
+import nme.AssetType;
 
 class AssetData
 {
 
    public static var path = new Map<String,String>();
    public static var type = new Map<String,AssetType>();
-   public static var useResources = false;
+   public static var useResources = ::EMBED_ASSETS::;
    private static var initialized:Bool = false;
    
    public static function initialize ():Void

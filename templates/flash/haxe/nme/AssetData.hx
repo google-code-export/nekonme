@@ -2,17 +2,7 @@ package nme;
 
 
 import nme.Assets;
-
-
-enum AssetType 
-{
-   BINARY;
-   FONT;
-   IMAGE;
-   MUSIC;
-   SOUND;
-   TEXT;
-}
+import nme.AssetType;
 
 
 

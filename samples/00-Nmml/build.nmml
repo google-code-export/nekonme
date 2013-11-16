@@ -19,20 +19,14 @@
      height="480" 
      orientation="landscape" 
      fps="60"
-     background="0x808080"
+     background="0xeeeeff"
      require_shaders="true"
      resizable="true"
      hardware="true"
   />
-  
+ 
   <source path="src" />
   
   <haxelib name="nme" />
-
-  <assets>
-     <image name="assets/Image.jpg" />
-  </assets>
-
-
   
 </project>

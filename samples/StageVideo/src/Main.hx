@@ -3,8 +3,13 @@ import nme.net.NetStream;
 import nme.net.NetConnection;
 import nme.events.StageVideoEvent;
 
-import flash.events.AsyncErrorEvent;
-import flash.events.NetStatusEvent;
+import nme.events.AsyncErrorEvent;
+import nme.events.NetStatusEvent;
+
+import nme.display.Bitmap;
+import nme.display.BitmapData;
+import nme.geom.Matrix;
+import nme.events.MouseEvent;
 
 /*
 The following steps summarize how to use a StageVideo object to play a video:
@@ -17,9 +22,28 @@ Listen for the VideoEvent.RENDER_STATE event on the Video object. This event pro
 
 class Main extends Sprite
 {
+   static var sMain:Main;
+
+   static inline var BACK = 0;
+   static inline var PLAY = 1;
+   static inline var PAUSE = 2;
+   static inline var STOP = 3;
+   static inline var NEXT = 4;
+
+   var buttonData:BitmapData;
+   var button:Sprite;
+   var buttonAction:Int;
+
    public function new()
    {
       super();
+ 
+      buttonData = nme.Assets.getBitmapData("buttons");
+      button = new Sprite();
+      button.addEventListener(MouseEvent.CLICK, onClick );
+      setButton(PLAY);
+      addChild(button);
+
 
       // In flash, we must wait for StageVideoAvailabilityEvent.STAGE_VIDEO_AVAILABILITY
       if (stage.stageVideos.length<1)
@@ -63,6 +87,25 @@ class Main extends Sprite
           // Seems flash needs this?
           addEventListener(nme.events.Event.ENTER_FRAME, function(_) { stream.bytesLoaded; } );
       }
+   }
+
+   function onClick(_)
+   {
+      trace("Click !");
+   }
+
+   function setButton(inMode:Int)
+   {
+      buttonAction = inMode;
+
+      var gfx = button.graphics;
+      gfx.clear();
+      var mtx = new Matrix();
+      mtx.translate( -inMode*60, 0 );
+      gfx.beginBitmapFill( buttonData, mtx );
+      gfx.drawRect(0,0,60,52);
+      button.x = (stage.stageWidth-60)* 0.5;
+      button.y = (stage.stageHeight-52)* 0.5;
    }
 
    function asyncErrorHandler(event:AsyncErrorEvent):Void 
