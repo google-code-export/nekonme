@@ -1870,7 +1870,7 @@ void Stage::HandleEvent(Event &inEvent)
 
 void Stage::setOpaqueBackground(uint32 inBG)
 {
-   opaqueBackground = inBG | 0xff000000;
+   opaqueBackground = inBG;
    DirtyCache();
 }
 

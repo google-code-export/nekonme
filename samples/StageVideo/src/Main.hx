@@ -92,6 +92,7 @@ class Main extends Sprite
    function onClick(_)
    {
       trace("Click !");
+      stage.opaqueBackground = null;
    }
 
    function setButton(inMode:Int)

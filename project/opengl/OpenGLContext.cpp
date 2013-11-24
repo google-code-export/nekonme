@@ -104,12 +104,12 @@ public:
      
       glViewport(r.x,mHeight-r.y1(),r.w,r.h);
 
-      if (r==Rect(mWidth,mHeight))
+      if (r==Rect(mWidth,mHeight) || true )
       {
          glClearColor((GLclampf)( ((inColour >>16) & 0xff) /255.0),
                       (GLclampf)( ((inColour >>8 ) & 0xff) /255.0),
                       (GLclampf)( ((inColour     ) & 0xff) /255.0),
-                      (GLclampf)1.0 );
+                      (GLclampf)( ((inColour>>24 ) & 0xff) /255.0) );
          glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       }
       else
@@ -117,10 +117,11 @@ public:
          #ifndef NME_FORCE_GLES2
          // TODO: Clear with a rect
          // TODO: Need replacement call for GLES2
+         // TODO: Disable blend
          glColor4f((GLclampf)( ((inColour >>16) & 0xff) /255.0),
                    (GLclampf)( ((inColour >>8 ) & 0xff) /255.0),
                    (GLclampf)( ((inColour     ) & 0xff) /255.0),
-                   (GLclampf)1.0 );
+                   (GLclampf)( ((inColour>>24 ) & 0xff) /255.0) );
 
          glMatrixMode(GL_MODELVIEW);
          glPushMatrix();

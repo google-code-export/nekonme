@@ -225,6 +225,24 @@ public:
 
    bool isOpenGL() const { return mOGLContext; }
 
+   void setOpaqueBackground(uint32 inBG)
+   {
+      printf("uistage -> BG %08x\n", inBG);
+      if (inBG==0)
+      {
+         printf("Was opaque %d\n", sgNMEView.opaque);
+         CAEAGLLayer *eaglLayer = (CAEAGLLayer *)sgNMEView.layer;
+         sgNMEView.opaque = NO;
+         eaglLayer.opaque = NO;
+         Stage::setOpaqueBackground(0);
+      }
+      else
+      {
+         Stage::setOpaqueBackground(inBG);
+      }
+
+   }
+
    /*
    void RenderState()
    {
@@ -250,7 +268,11 @@ public:
          //fetch the values of size first
          glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &backingWidth);
          glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &backingHeight);
-         
+         //int blue,alpha;
+         //glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_BLUE_SIZE, &blue);
+         //glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_ALPHA_SIZE, &alpha);
+         //printf("Render buffer %d/%d\n", blue,alpha);
+
          //Create the depth / stencil buffers
          if (sgHasDepthBuffer && !sgHasStencilBuffer)
          {
@@ -661,7 +683,16 @@ static NSString *sgDisplayLinkMode = NSRunLoopCommonModes;
       // Get the layer
       CAEAGLLayer *eaglLayer = (CAEAGLLayer *)self.layer;
 
-      eaglLayer.opaque = TRUE;
+         eaglLayer.opaque = NO;
+         self.opaque = NO;
+         self.backgroundColor = [UIColor clearColor];
+
+         CGColorSpaceRef rgb = CGColorSpaceCreateDeviceRGB();
+         const CGFloat none[] = {0.0, 0.0, 0.0, 0.0};
+         eaglLayer.backgroundColor = CGColorCreate(rgb, none);
+         CGColorSpaceRelease(rgb);
+
+      //eaglLayer.opaque = TRUE;
       eaglLayer.drawableProperties = [NSDictionary dictionaryWithObjectsAndKeys:
                                      [NSNumber numberWithBool:FALSE], kEAGLDrawablePropertyRetainedBacking,
                                       kEAGLColorFormatRGBA8, kEAGLDrawablePropertyColorFormat,

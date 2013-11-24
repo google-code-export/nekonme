@@ -429,6 +429,18 @@ class Stage extends DisplayObjectContainer
       return inOtherTimers;
    }
 
+   override private function set_opaqueBackground(inBG:Null<Int>):Null<Int> 
+   {
+      if (inBG == null)
+         DisplayObject.nme_display_object_set_bg(nmeHandle, 0);
+      else
+         DisplayObject.nme_display_object_set_bg(nmeHandle, inBG | 0xff000000);
+
+      return inBG;
+   }
+
+
+
    /** @private */ private function nmeOnChange(inEvent) {
       var obj:DisplayObject = nmeFindByID(inEvent.id);
       if (obj != null)
